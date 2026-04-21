@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>Apex SMC Capital | Smart Money Advisory</title>
+   <link rel="preconnect" href="https://fonts.googleapis.com">
+   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+   <script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js"></script>
+   <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+   <!-- Navigation -->
+   <nav class="navbar">
+      <div class="nav-container">
+         <div class="nav-brand">
+            <span class="brand-icon">◆</span>
+            <span class="brand-text">APEX SMC CAPITAL</span>
+         </div>
+         <div class="nav-links">
+            <a href="#dashboard" class="nav-link active">Dashboard</a>
+            <a href="#signals" class="nav-link">Live Signals</a>
+            <a href="#analytics" class="nav-link">Analytics</a>
+            <a href="#education" class="nav-link">Education</a>
+            <a href="#about" class="nav-link">About</a>
+         </div>
+         <div class="nav-actions">
+            <button class="btn btn-outline" onclick="openRiskModal()">Risk Calculator</button>
+            <button class="btn btn-primary" onclick="openAuthModal()">Client Portal</button>
+         </div>
+      </div>
+   </nav>
+
+   <!-- Hero Section -->
+   <header class="hero">
+      <div class="hero-content">
+         <div class="hero-badge">
+            <span class="pulse-dot"></span>
+            LIVE SIGNALS ACTIVE
+         </div>
+         <h1>Smart Money.<br>Precise Entries.<br>Maximum Returns.</h1>
+         <p class="hero-subtitle">Institutional-grade trading signals powered by Smart Money Concepts analysis. Real-time entry, exit, and risk management for serious traders.</p>
+         <div class="hero-stats">
+            <div class="stat">
+               <span class="stat-value" id="totalSignals">247</span>
+               <span class="stat-label">Signals YTD</span>
+            </div>
+            <div class="stat">
+               <span class="stat-value" id="winRate">78.4%</span>
+               <span class="stat-label">Win Rate</span>
+            </div>
+            <div class="stat">
+               <span class="stat-value" id="avgRR">2.3:1</span>
+               <span class="stat-label">Avg R:R</span>
+            </div>
+            <div class="stat">
+               <span class="stat-value" id="dailyReturn">+3.2%</span>
+               <span class="stat-label">Daily Return</span>
+            </div>
+         </div>
+      </div>
+      <div class="hero-chart" id="heroChart"></div>
+   </header>
+
+   <!-- Main Dashboard -->
+   <main class="dashboard" id="dashboard">
+      <!-- Signal Ticker -->
+      <section class="signal-ticker">
+         <div class="ticker-wrapper">
+            <div class="ticker-track" id="tickerTrack">
+               <!-- Populated by JS -->
+            </div>
+         </div>
+      </section>
+
+      <!-- Primary Grid -->
+      <div class="dashboard-grid">
+         <!-- Chart Panel -->
+         <section class="panel chart-panel">
+            <div class="panel-header">
+               <h2>Live Chart</h2>
+               <div class="chart-controls">
+                  <select id="symbolSelect" onchange="changeSymbol(this.value)">
+                     <option value="BINANCE:BTCUSDT">BTC/USDT</option>
+                     <option value="BINANCE:ETHUSDT">ETH/USDT</option>
+                     <option value="BINANCE:EURUSD">EUR/USD</option>
+                     <option value="BINANCE:GBPUSD">GBP/USD</option>
+                     <option value="BINANCE:USDJPY">USD/JPY</option>
+                     <option value="BINANCE:GOLD">XAU/USD</option>
+                     <option value="NASDAQ:AAPL">AAPL</option>
+                     <option value="NYSE:TSLA">TSLA</option>
+                  </select>
+                  <select id="timeframeSelect" onchange="changeTimeframe(this.value)">
+                     <option value="1">M1</option>
+                     <option value="5">M5</option>
+                     <option value="15">M15</option>
+                     <option value="60" selected>H1</option>
+                     <option value="240">H4</option>
+                     <option value="1D">D1</option>
+                  </select>
+               </div>
+            </div>
+            <div class="chart-container" id="mainChart"></div>
+            <div class="chart-overlays" id="chartOverlays">
+               <!-- SMC Patterns overlay annotations -->
+            </div>
+         </section>
+
+         <!-- Signals Panel -->
+         <section class="panel signals-panel" id="signals">
+            <div class="panel-header">
+               <h2>Live Trading Signals</h2>
+               <div class="signal-filters">
+                  <button class="filter-btn active" data-filter="all">All</button>
+                  <button class="filter-btn" data-filter="long">Long</button>
+                  <button class="filter-btn" data-filter="short">Short</button>
+                  <button class="filter-btn" data-filter="closed">Closed</button>
+               </div>
+            </div>
+            <div class="signals-list" id="signalsList">
+               <!-- Populated by JS -->
+            </div>
+         </section>
+
+         <!-- Risk Management Panel -->
+         <section class="panel risk-panel">
+            <div class="panel-header">
+               <h2>Risk Management</h2>
+               <span class="risk-status risk-safe">PROTECTED</span>
+            </div>
+            <div class="risk-metrics">
+               <div class="risk-metric">
+                  <span class="metric-label">Account Balance</span>
+                  <span class="metric-value" id="accountBalance">$50,000.00</span>
+               </div>
+               <div class="risk-metric">
+                  <span class="metric-label">Equity</span>
+                  <span class="metric-value" id="accountEquity">$51,847.32</span>
+               </div>
+               <div class="risk-metric">
+                  <span class="metric-label">Risk Per Trade</span>
+                  <div class="risk-input-group">
+                     <input type="number" id="riskPercent" value="1.0" min="0.1" max="5" step="0.1">
+                     <span class="input-suffix">%</span>
+                  </div>
+               </div>
+               <div class="risk-metric">
+                  <span class="metric-label">Max Daily Loss</span>
+                  <div class="risk-input-group">
+                     <input type="number" id="maxDailyLoss" value="5.0" min="1" max="20" step="0.5">
+                     <span class="input-suffix">%</span>
+                  </div>
+               </div>
+               <div class="risk-metric">
+                  <span class="metric-label">Current Drawdown</span>
+                  <span class="metric-value risk-value" id="currentDrawdown">-0.84%</span>
+               </div>
+               <div class="risk-metric">
+                  <span class="metric-label">Positions Open</span>
+                  <span class="metric-value" id="openPositions">3 / 5</span>
+               </div>
+            </div>
+            <div class="risk-meter">
+               <div class="meter-label">
+                  <span>Daily Risk Used</span>
+                  <span id="dailyRiskUsed">16.8%</span>
+               </div>
+               <div class="meter-bar">
+                  <div class="meter-fill" id="dailyRiskFill" style="width: 16.8%"></div>
+               </div>
+            </div>
+            <div class="position-sizes">
+               <h3>Position Size Calculator</h3>
+               <div class="calc-inputs">
+                  <div class="calc-group">
+                     <label>Account Size ($)</label>
+                     <input type="number" id="calcAccount" value="50000">
+                  </div>
+                  <div class="calc-group">
+                     <label>Entry Price</label>
+                     <input type="number" id="calcEntry" step="0.00001">
+                  </div>
+                  <div class="calc-group">
+                     <label>Stop Loss</label>
+                     <input type="number" id="calcSL" step="0.00001">
+                  </div>
+                  <div class="calc-group">
+                     <label>Risk %</label>
+                     <input type="number" id="calcRisk" value="1" min="0.1" max="5">
+                  </div>
+               </div>
+               <button class="btn btn-primary calc-btn" onclick="calculatePositionSize()">Calculate Lot Size</button>
+               <div class="calc-result" id="calcResult">
+                  <span class="result-label">Recommended Lot Size</span>
+                  <span class="result-value" id="calcLotSize">0.00</span>
+               </div>
+            </div>
+         </section>
+
+         <!-- Analytics Panel -->
+         <section class="panel analytics-panel" id="analytics">
+            <div class="panel-header">
+               <h2>Performance Analytics</h2>
+               <select id="analyticsPeriod">
+                  <option value="7">Last 7 Days</option>
+                  <option value="30" selected>Last 30 Days</option>
+                  <option value="90">Last 90 Days</option>
+                  <option value="365">Year to Date</option>
+               </select>
+            </div>
+            <div class="analytics-grid">
+               <div class="analytics-card">
+                  <h3>Total P&L</h3>
+                  <span class="analytics-value profit" id="totalPnL">+$8,472.50</span>
+                  <span class="analytics-change up">+16.95%</span>
+               </div>
+               <div class="analytics-card">
+                  <h3>Sharpe Ratio</h3>
+                  <span class="analytics-value" id="sharpeRatio">2.34</span>
+                  <span class="analytics-label">Excellent</span>
+               </div>
+               <div class="analytics-card">
+                  <h3>Win Rate</h3>
+                  <span class="analytics-value" id="analyticsWinRate">78.4%</span>
+                  <span class="analytics-change up">+4.2%</span>
+               </div>
+               <div class="analytics-card">
+                  <h3>Profit Factor</h3>
+                  <span class="analytics-value" id="profitFactor">2.87</span>
+                  <span class="analytics-label">Good</span>
+               </div>
+               <div class="analytics-card">
+                  <h3>Max Drawdown</h3>
+                  <span class="analytics-value loss" id="maxDrawdown">-4.2%</span>
+                  <span class="analytics-label">Within Risk</span>
+               </div>
+               <div class="analytics-card">
+                  <h3>Avg Trade</h3>
+                  <span class="analytics-value profit" id="avgTrade">+$127.40</span>
+                  <span class="analytics-change up">+2.1%</span>
+               </div>
+            </div>
+            <div class="equity-curve">
+               <h3>Equity Curve</h3>
+               <div id="equityChart" class="equity-chart"></div>
+            </div>
+         </section>
+
+         <!-- Education Panel -->
+         <section class="panel education-panel" id="education">
+            <div class="panel-header">
+               <h2>SMC Education</h2>
+            </div>
+            <div class="education-content">
+               <div class="edu-card">
+                  <div class="edu-icon">📦</div>
+                  <h3>Order Blocks</h3>
+                  <p>Where institutional orders sit. The last bearish/bullish candle before a strong move in the opposite direction.</p>
+               </div>
+               <div class="edu-card">
+                  <div class="edu-icon">⚡</div>
+                  <h3>Fair Value Gaps</h3>
+                  <p>Price imbalances created when markets make rapid moves, leaving gaps that price tends to fill.</p>
+               </div>
+               <div class="edu-card">
+                  <div class="edu-icon">📊</div>
+                  <h3>BOS / CHoCH</h3>
+                  <p>Break of Structure shows trend continuation. Change of Character signals a potential trend reversal.</p>
+               </div>
+               <div class="edu-card">
+                  <div class="edu-icon">💧</div>
+                  <h3>Liquidity Pools</h3>
+                  <p>Areas where stop runs occur. Smart money hunts retail stops above swing highs and below swing lows.</p>
+               </div>
+               <div class="edu-card">
+                  <div class="edu-icon">🎯</div>
+                  <h3>Inducement</h3>
+                  <p>Small false moves that trap retail traders before the actual directional move begins.</p>
+               </div>
+               <div class="edu-card">
+                  <div class="edu-icon">🏛️</div>
+                  <h3>Structure Zones</h3>
+                  <p>Support and resistance based on swing highs/lows. The framework all other SMC concepts build upon.</p>
+               </div>
+            </div>
+         </section>
+      </div>
+   </main>
+
+   <!-- Footer -->
+   <footer class="footer" id="about">
+      <div class="footer-content">
+         <div class="footer-brand">
+            <span class="brand-icon">◆</span>
+            <span class="brand-text">APEX SMC CAPITAL</span>
+            <p>Institutional-grade trading signals and risk management for the modern retail trader.</p>
+         </div>
+         <div class="footer-links">
+            <h4>Services</h4>
+            <a href="#">Live Signals</a>
+            <a href="#">Risk Management</a>
+            <a href="#">Education</a>
+            <a href="#">Consulting</a>
+         </div>
+         <div class="footer-links">
+            <h4>Company</h4>
+            <a href="#">About Us</a>
+            <a href="#">Methodology</a>
+            <a href="#">Performance</a>
+            <a href="#">Contact</a>
+         </div>
+         <div class="footer-links">
+            <h4>Legal</h4>
+            <a href="#">Terms of Service</a>
+            <a href="#">Privacy Policy</a>
+            <a href="#">Risk Disclosure</a>
+            <a href="#">Disclaimer</a>
+         </div>
+      </div>
+      <div class="footer-bottom">
+         <p>© 2026 Apex SMC Capital. All trading involves risk. Past performance does not guarantee future results.</p>
+         <p class="disclaimer">Financial advisory services provided by Apex SMC Capital LLC. Registered investment adviser. Not financial advice.</p>
+      </div>
+   </footer>
+
+   <!-- Modals -->
+   <div class="modal-overlay" id="riskModal">
+      <div class="modal">
+         <div class="modal-header">
+            <h2>Risk Calculator</h2>
+            <button class="modal-close" onclick="closeRiskModal()">×</button>
+         </div>
+         <div class="modal-body">
+            <div class="calc-row">
+               <label>Account Size ($)</label>
+               <input type="number" id="modalAccount" value="50000">
+            </div>
+            <div class="calc-row">
+               <label>Entry Price</label>
+               <input type="number" id="modalEntry" step="0.00001" placeholder="0.00">
+            </div>
+            <div class="calc-row">
+               <label>Stop Loss Price</label>
+               <input type="number" id="modalSL" step="0.00001" placeholder="0.00">
+            </div>
+            <div class="calc-row">
+               <label>Take Profit Price</label>
+               <input type="number" id="modalTP" step="0.00001" placeholder="0.00">
+            </div>
+            <div class="calc-row">
+               <label>Risk Percentage (%)</label>
+               <input type="number" id="modalRisk" value="1" min="0.1" max="5" step="0.1">
+            </div>
+            <button class="btn btn-primary full-width" onclick="runRiskCalculation()">Calculate</button>
+            <div class="calc-results" id="modalResults">
+               <div class="result-row">
+                  <span>Position Size</span>
+                  <span id="modalPositionSize">-</span>
+               </div>
+               <div class="result-row">
+                  <span>Risk Amount</span>
+                  <span id="modalRiskAmount">-</span>
+               </div>
+               <div class="result-row">
+                  <span>Reward Amount</span>
+                  <span id="modalRewardAmount">-</span>
+               </div>
+               <div class="result-row">
+                  <span>Risk:Reward Ratio</span>
+                  <span id="modalRR">-</span>
+               </div>
+               <div class="result-row highlight">
+                  <span>Expected Trade</span>
+                  <span id="modalExpected">-</span>
+               </div>
+            </div>
+         </div>
+      </div>
+   </div>
+
+   <div class="modal-overlay" id="authModal">
+      <div class="modal auth-modal">
+         <div class="modal-header">
+            <h2>Client Portal</h2>
+            <button class="modal-close" onclick="closeAuthModal()">×</button>
+         </div>
+         <div class="modal-body">
+            <div class="auth-tabs">
+               <button class="auth-tab active" data-tab="login">Sign In</button>
+               <button class="auth-tab" data-tab="register">Register</button>
+            </div>
+            <div class="auth-content" id="loginForm">
+               <div class="auth-field">
+                  <label>Email</label>
+                  <input type="email" placeholder="client@example.com">
+               </div>
+               <div class="auth-field">
+                  <label>Password</label>
+                  <input type="password" placeholder="••••••••">
+               </div>
+               <button class="btn btn-primary full-width">Access Portal</button>
+               <a href="#" class="auth-link">Forgot password?</a>
+            </div>
+            <div class="auth-content hidden" id="registerForm">
+               <div class="auth-field">
+                  <label>Full Name</label>
+                  <input type="text" placeholder="John Smith">
+               </div>
+               <div class="auth-field">
+                  <label>Email</label>
+                  <input type="email" placeholder="client@example.com">
+               </div>
+               <div class="auth-field">
+                  <label>Password</label>
+                  <input type="password" placeholder="••••••••">
+               </div>
+               <div class="auth-field">
+                  <label>Confirm Password</label>
+                  <input type="password" placeholder="••••••••">
+               </div>
+               <div class="auth-checkbox">
+                  <input type="checkbox" id="agreeTerms">
+                  <label for="agreeTerms">I agree to the <a href="#">Terms of Service</a> and <a href="#">Risk Disclosure</a></label>
+               </div>
+               <button class="btn btn-primary full-width">Create Account</button>
+            </div>
+         </div>
+      </div>
+   </div>
+
+   <!-- Toast Notifications -->
+   <div class="toast-container" id="toastContainer"></div>
+
+   <script src="app.js"></script>
+</body>
+</html>

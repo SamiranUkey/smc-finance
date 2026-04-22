@@ -2,7 +2,7 @@
    APEX SMC CAPITAL - Application Logic
    ================================================ */
 
-const API_BASE = 'http://localhost:3001/api';
+const API_BASE = 'https://smc-finance.onrender.com/api';
 
 // Symbol mapping: display -> Binance API symbol
 const SYMBOL_MAP = {

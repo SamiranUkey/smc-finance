@@ -1437,68 +1437,53 @@ function addSignalOverlay(signal) {
    const chart = state.charts.main || state.charts.hero;
    if (!chart) return;
 
-   // Check if we already added this signal (avoid duplicates)
    const signalKey = signal.timestamp + '_' + signal.direction;
    if (state.signalOverlays && state.signalOverlays.has(signalKey)) return;
    if (!state.signalOverlays) state.signalOverlays = new Set();
    state.signalOverlays.add(signalKey);
 
-
    const timestamp = signal.timestamp || Math.floor(Date.now() / 1000);
-   const timeEnd = timestamp + 14400; // 4 hours later
+   const timeEnd = timestamp + 14400; 
 
+   // 1. Use PriceLines for the main levels (Professional look)
+   // These are horizontal lines that span the whole chart
+   chart.setPriceLine(signal.entryPrice, {
+      color: signal.direction > 0 ? '#00d4aa' : '#ff4757',
+      lineWidth: 2,
+      lineStyle: 0,
+      axisLabelVisible: true,
+      title: `ENTRY ${signal.direction > 0 ? 'LONG' : 'SHORT'}`,
+   });
 
-   // Entry line
-   try {
-      const entryLine = chart.addLineSeries({
-         color: signal.direction > 0 ? '#00d4aa' : '#ff4757',
-         lineWidth: 2,
-         lineStyle: 0,
-         priceLineVisible: true,
-         title: `ENTRY ${signal.direction > 0 ? 'LONG' : 'SHORT'}`
-      });
-      entryLine.setData([
-         { time: timestamp, value: signal.entryPrice },
-         { time: timeEnd, value: signal.entryPrice }
-      ]);
+   chart.setPriceLine(signal.stopLoss, {
+      color: '#ff4757',
+      lineWidth: 1,
+      lineStyle: 2,
+      axisLabelVisible: true,
+      title: 'SL',
+   });
 
-      // SL line
-      const slLine = chart.addLineSeries({
-         color: '#ff4757',
-         lineWidth: 1,
-         lineStyle: 2,
-         priceLineVisible: true,
-         title: 'SL'
-      });
-      slLine.setData([
-         { time: timestamp, value: signal.stopLoss },
-         { time: timeEnd, value: signal.stopLoss }
-      ]);
+   chart.setPriceLine(signal.takeProfit, {
+      color: '#0ea5e9',
+      lineWidth: 1,
+      lineStyle: 2,
+      axisLabelVisible: true,
+      title: 'TP',
+   });
 
-
-      // TP line
-      const tpLine = chart.addLineSeries({
-         color: '#0ea5e9',
-         lineWidth: 1,
-         lineStyle: 2,
-         priceLineVisible: true,
-         title: 'TP'
-      });
-      tpLine.setData([
-         { time: timestamp, value: signal.takeProfit },
-         { time: timeEnd, value: signal.takeProfit }
-      ]);
-
-      // Mark entry point
-      const markerSeries = chart.addMarkersSeries([{
-         time: timestamp,
-         color: signal.direction > 0 ? '#00d4aa' : '#ff4757',
-         shape: signal.direction > 0 ? 'arrowUp' : 'arrowDown',
-         text: '📍'
-      }]);
-   } catch (e) {
-      console.warn('[SMC Overlay] Could not add overlay:', e.message);
-   }
+   // 2. Use Markers for the exact entry point
+   const markerSeries = chart.addMarkersSeries({
+      aboveBar: signal.direction < 0,
+      belowBar: signal.direction > 0,
+   });
+   
+   markerSeries.setMarkers([{
+      time: timestamp,
+      position: signal.direction > 0 ? 'belowBar' : 'aboveBar',
+      color: signal.direction > 0 ? '#00d4aa' : '#ff4757',
+      shape: signal.direction > 0 ? 'arrowUp' : 'arrowDown',
+      text: `SMC ${signal.direction > 0 ? 'BUY' : 'SELL'}`,
+   }]);
 }
 
 async function runSMCAnalysis() {

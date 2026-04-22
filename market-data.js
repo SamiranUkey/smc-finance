@@ -21,10 +21,14 @@ class MarketData {
    connect() {
       if (this.ws && this.ws.readyState === WebSocket.OPEN) return;
       
-      // We need both ticker (for the top bar) and kline (for the chart)
-      const symbols = ['btcusdt', 'ethusdt', 'solusdt', 'bnbusdt', 'adausdt', 'dogeusdt'];
-      const streams = [];
+      // Expanded symbol list to cover all dashboard pairs
+      // Binance uses USDT pairs for most of these
+      const symbols = [
+         'btcusdt', 'ethusdt', 'solusdt', 'bnbusdt', 
+         'eurusdt', 'gbpusdt', 'usdjpy', 'paxgusdt' // PAXG is Gold
+      ];
       
+      const streams = [];
       symbols.forEach(s => {
          streams.push(`${s}@ticker`);
          streams.push(`${s}@kline_1m`);
@@ -49,7 +53,7 @@ class MarketData {
             
             if (!data) return;
             
-            // Ticker Update (Price Bar)
+            // Ticker Update
             if (stream.includes('@ticker')) {
                const symbol = data.s; 
                const ticker = {
@@ -66,7 +70,7 @@ class MarketData {
                this.priceCache[symbol] = ticker;
                this.notify({ type: 'ticker', data: ticker });
             } 
-            // Kline Update (Real-time Chart)
+            // Kline Update
             else if (stream.includes('@kline')) {
                const kline = {
                   symbol: this.formatSymbol(data.s),
@@ -103,10 +107,7 @@ class MarketData {
          console.error('[MarketData] Max reconnect attempts reached');
          return;
       }
-      
       this.reconnectAttempts++;
-      console.log(`[MarketData] Reconnecting in ${this.reconnectDelay}ms (attempt ${this.reconnectAttempts})`);
-      
       setTimeout(() => {
          this.ws = null;
          this.connect();
@@ -114,25 +115,18 @@ class MarketData {
    }
    
    disconnect() {
-      if (this.ws) {
-         this.ws.close();
-         this.ws = null;
-      }
-      if (this.forexInterval) {
-         clearInterval(this.forexInterval);
-         this.forexInterval = null;
-      }
+      if (this.ws) this.ws.close();
+      if (this.forexInterval) clearInterval(this.forexInterval);
    }
    
    formatSymbol(symbol) {
       if (!symbol) return 'UNKNOWN';
       const s = symbol.toUpperCase();
-      if (s.endsWith('USDT')) {
-         return s.replace('USDT', '/USDT');
-      }
-      if (s.endsWith('USD')) {
-         return s.replace('USD', '/USD');
-      }
+      // Map PAXGUSDT to XAU/USD for the dashboard
+      if (s === 'PAXGUSDT') return 'XAU/USD';
+      if (s.endsWith('USDT')) return s.replace('USDT', '/USDT');
+      if (s.endsWith('USD')) return s.replace('USD', '/USD');
+      
       const bases = ['EUR', 'GBP', 'USD', 'AUD', 'NZD', 'CAD', 'CHF', 'JPY'];
       for (const base of bases) {
          if (s.startsWith(base)) {
@@ -177,14 +171,15 @@ class MarketData {
             };
             this.notify({ type: 'ticker', data: this.forexCache[pair.symbol] });
          });
-         
       } catch (e) {
          console.error('[MarketData] Forex fetch error:', e);
       }
    }
    
    async fetchKlines(symbol, interval = '1h', limit = 300) {
-      const binanceSymbol = symbol.replace('/', '').toUpperCase();
+      let binanceSymbol = symbol.replace('/', '').toUpperCase();
+      if (binanceSymbol === 'XAUUSD') binanceSymbol = 'PAXGUSDT';
+      
       try {
          const res = await fetch(
             `https://api.binance.com/api/v3/klines?symbol=${binanceSymbol}&interval=${interval}&limit=${limit}`

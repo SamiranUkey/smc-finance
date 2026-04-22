@@ -1536,11 +1536,23 @@ function addSignalOverlay(signal) {
 }
 
 async function runSMCAnalysis() {
-   if (!smc || !state.klineData || state.klineData.length < 20) return;
+   if (!smc) return;
+   
+   // Get the current symbol and timeframe key
+   const key = state.currentBinance + state.currentTimeframe;
+   const candles = state.klineData[key];
+   
+   if (!candles || candles.length < 20) {
+      console.warn(`[SMC] Not enough data for ${key} (${candles?.length || 0}/20)`);
+      return;
+   }
 
-
-   const results = smc.analyze(state.klineData);
-   updateSMCPanel(results);
+   try {
+      const results = smc.analyze(candles);
+      updateSMCPanel(results);
+   } catch (e) {
+      console.error('[SMC Analysis Error]:', e);
+   }
 }
 
 /* ================================================

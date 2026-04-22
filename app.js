@@ -643,14 +643,10 @@ function initTicker() {
 }
 
 function updateTickerFromMarketData(ticker) {
-   // Update the ticker item with real price data from Binance
    const track = document.getElementById('tickerTrack');
    if (!track) return;
    
-   // Find ticker item by symbol
    let symbolKey = ticker.symbol;
-   
-   // Handle different symbol formats
    const tickerItem = track.querySelector(`.ticker-item[data-symbol="${symbolKey}"]`);
    if (tickerItem) {
       const priceEl = tickerItem.querySelector('.ticker-price');
@@ -665,7 +661,29 @@ function updateTickerFromMarketData(ticker) {
       }
    }
    
-   // Also update state.symbols for other parts of the app
+   // UPDATE MAIN PRICE DISPLAY (The professional touch)
+   if (symbolKey === state.currentSymbol) {
+      const mainPriceEl = document.getElementById('currentSymbolPrice');
+      const mainChangeEl = document.getElementById('currentSymbolChange');
+      
+      if (mainPriceEl) {
+         const oldPrice = parseFloat(mainPriceEl.textContent.replace(/[, $]/g, ''));
+         const newPrice = ticker.price;
+         
+         // Add visual flash effect
+         mainPriceEl.classList.remove('price-up', 'price-down');
+         if (newPrice > oldPrice) mainPriceEl.classList.add('price-up');
+         else if (newPrice < oldPrice) mainPriceEl.classList.add('price-down');
+         
+         mainPriceEl.textContent = formatTickerPrice(newPrice);
+      }
+      
+      if (mainChangeEl) {
+         mainChangeEl.textContent = `${ticker.change >= 0 ? '+' : ''}${ticker.change.toFixed(2)}%`;
+         mainChangeEl.className = `symbol-change ${ticker.change >= 0 ? 'up' : 'down'}`;
+      }
+   }
+   
    const sym = state.symbols.find(s => s.ticker === symbolKey);
    if (sym) {
       sym.price = ticker.price;

@@ -885,3 +885,11 @@ a:hover { color: var(--accent-hover); }
 }
 .smc-score span:first-child { color: #8b9ab5; }
 .score-value { font-weight: 700; color: #00d4aa; }
+
+.symbol-price {
+   font-family: 'JetBrains Mono', monospace;
+   font-weight: 700;
+   transition: color 0.3s ease;
+}
+.price-up { color: #00d4aa !important; }
+.price-down { color: #ff4757 !important; }

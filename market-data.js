@@ -10,12 +10,9 @@ class MarketData {
       this.ws = null;
       this.reconnectAttempts = 0;
       this.maxReconnectAttempts = 5;
-      this reconnectDelay = 3000;
+      this.reconnectDelay = 3000;
       this.forexInterval = null;
       this.forexCache = {};
-      
-      // Stream format: symbol@kline_1m, symbol@ticker, etc.
-      // Combined streams: /stream?streams=symbol1@ticker/symbol2@ticker
    }
    
    /* ================================================
@@ -24,13 +21,16 @@ class MarketData {
    connect() {
       if (this.ws && this.ws.readyState === WebSocket.OPEN) return;
       
-      const streams = [
-         'btcusdt@ticker', 'ethusdt@ticker', 'eurusdt@ticker',
-         'gbpusdt@ticker', 'usdjpy@ticker', 'SOLUSDT@ticker',
-         'bnbusdt@ticker', 'adausdt@ticker', 'dogeusdt@ticker'
-      ].join('/');
+      // We need both ticker (for the top bar) and kline (for the chart)
+      const symbols = ['btcusdt', 'ethusdt', 'solusdt', 'bnbusdt', 'adausdt', 'dogeusdt'];
+      const streams = [];
       
-      const wsUrl = `wss://stream.binance.com:9443/stream?streams=${streams}`;
+      symbols.forEach(s => {
+         streams.push(`${s}@ticker`);
+         streams.push(`${s}@kline_1m`);
+      });
+      
+      const wsUrl = `wss://stream.binance.com:9443/stream?streams=${streams.join('/')}`;
       
       this.ws = new WebSocket(wsUrl);
       
@@ -38,33 +38,49 @@ class MarketData {
          console.log('[MarketData] WebSocket connected to Binance');
          this.reconnectAttempts = 0;
          this.notify({ type: 'connected' });
-         
-         // Also start forex polling (Binance doesn't have forex majors)
          this.startForexPolling();
       };
       
       this.ws.onmessage = (event) => {
          try {
             const msg = JSON.parse(event.data);
+            const stream = msg.stream;
             const data = msg.data;
             
-            if (!data || !data.s) return;
+            if (!data) return;
             
-            const symbol = data.s; // e.g. 'BTCUSDT'
-            const ticker = {
-               symbol: this.formatSymbol(symbol),
-               price: parseFloat(data.c),      // close price (current)
-               change: parseFloat(data.P),     // percent change
-               high: parseFloat(data.h),       // 24h high
-               low: parseFloat(data.l),        // 24h low
-               volume: parseFloat(data.v),     // 24h volume
-               bid: parseFloat(data.b),        // best bid
-               ask: parseFloat(data.a),        // best ask
-               timestamp: data.E
-            };
-            
-            this.priceCache[symbol] = ticker;
-            this.notify({ type: 'ticker', data: ticker });
+            // Ticker Update (Price Bar)
+            if (stream.includes('@ticker')) {
+               const symbol = data.s; 
+               const ticker = {
+                  symbol: this.formatSymbol(symbol),
+                  price: parseFloat(data.c),
+                  change: parseFloat(data.P),
+                  high: parseFloat(data.h),
+                  low: parseFloat(data.l),
+                  volume: parseFloat(data.v),
+                  bid: parseFloat(data.b),
+                  ask: parseFloat(data.a),
+                  timestamp: data.E
+               };
+               this.priceCache[symbol] = ticker;
+               this.notify({ type: 'ticker', data: ticker });
+            } 
+            // Kline Update (Real-time Chart)
+            else if (stream.includes('@kline')) {
+               const kline = {
+                  symbol: this.formatSymbol(data.s),
+                  kline: {
+                     t: data.t,
+                     o: data.o,
+                     h: data.h,
+                     l: data.l,
+                     c: data.c,
+                     v: data.v
+                  }
+               };
+               this.notify({ type: 'kline', data: kline });
+            }
             
          } catch (e) {
             console.error('[MarketData] Parse error:', e);
@@ -109,27 +125,24 @@ class MarketData {
    }
    
    formatSymbol(symbol) {
-      // BTCUSDT -> BTC/USDT
-      if (symbol.endsWith('USDT')) {
-         return symbol.replace('USDT', '/USDT');
+      if (!symbol) return 'UNKNOWN';
+      const s = symbol.toUpperCase();
+      if (s.endsWith('USDT')) {
+         return s.replace('USDT', '/USDT');
       }
-      if (symbol.endsWith('USD')) {
-         return symbol.replace('USD', '/USD');
+      if (s.endsWith('USD')) {
+         return s.replace('USD', '/USD');
       }
-      // EURUSD, GBPUSD, USDJPY etc
       const bases = ['EUR', 'GBP', 'USD', 'AUD', 'NZD', 'CAD', 'CHF', 'JPY'];
       for (const base of bases) {
-         if (symbol.startsWith(base)) {
-            const quote = symbol.replace(base, '');
+         if (s.startsWith(base)) {
+            const quote = s.replace(base, '');
             return `${base}/${quote}`;
          }
       }
-      return symbol;
+      return s;
    }
    
-   /* ================================================
-      FOREX POLLING (via frankfurter.app - free, no key)
-      ================================================ */
    startForexPolling() {
       this.fetchForexRates();
       this.forexInterval = setInterval(() => this.fetchForexRates(), 5000);
@@ -139,9 +152,7 @@ class MarketData {
       try {
          const res = await fetch('https://api.frankfurter.app/latest?from=USD&to=EUR,GBP,JPY,CAD,AUD,CHF');
          const data = await res.json();
-         
          const rates = data.rates;
-         const usdRate = 1; // base is USD
          
          const forexPairs = [
             { symbol: 'EUR/USD', price: rates.EUR },
@@ -156,7 +167,7 @@ class MarketData {
             this.forexCache[pair.symbol] = {
                symbol: pair.symbol,
                price: pair.price,
-               change: 0, // frankfurter doesn't provide daily change
+               change: 0,
                high: pair.price * 1.005,
                low: pair.price * 0.995,
                volume: 0,
@@ -164,7 +175,6 @@ class MarketData {
                ask: pair.price * 1.0002,
                timestamp: Date.now()
             };
-            
             this.notify({ type: 'ticker', data: this.forexCache[pair.symbol] });
          });
          
@@ -173,20 +183,15 @@ class MarketData {
       }
    }
    
-   /* ================================================
-      KLINE DATA FOR CHARTS (via Binance REST)
-      ================================================ */
    async fetchKlines(symbol, interval = '1h', limit = 300) {
-      const binanceSymbol = symbol.replace('/', '').replace('BTC', 'BTC');
-      
+      const binanceSymbol = symbol.replace('/', '').toUpperCase();
       try {
          const res = await fetch(
             `https://api.binance.com/api/v3/klines?symbol=${binanceSymbol}&interval=${interval}&limit=${limit}`
          );
          const data = await res.json();
-         
          return data.map(k => ({
-            time: Math.floor(k[0] / 1000), // unix seconds for lightweight-charts
+            time: Math.floor(k[0] / 1000),
             open: parseFloat(k[1]),
             high: parseFloat(k[2]),
             low: parseFloat(k[3]),
@@ -199,9 +204,6 @@ class MarketData {
       }
    }
    
-   /* ================================================
-      SUBSCRIPTION
-      ================================================ */
    subscribe(callback) {
       this.subscribers.push(callback);
       return () => {
@@ -213,11 +215,8 @@ class MarketData {
       this.subscribers.forEach(cb => cb(event));
    }
    
-   /* ================================================
-      GETTERS
-      ================================================ */
    getPrice(symbol) {
-      const normalized = symbol.replace('/', '').replace('USDT', 'USDT');
+      const normalized = symbol.replace('/', '').toUpperCase();
       return this.priceCache[normalized] || null;
    }
    
@@ -226,8 +225,5 @@ class MarketData {
    }
 }
 
-// Singleton instance
 const marketData = new MarketData();
-
-// Export for use in app.js
 window.marketData = marketData;

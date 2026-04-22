@@ -3,162 +3,158 @@
 <head>
    <meta charset="UTF-8">
    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-   <title>APEX SMC TERMINAL | Professional Trading Hub</title>
+   <title>APEX SMC TERMINAL | Institutional Grade</title>
    <link rel="stylesheet" href="styles.css">
-   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
    <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
 </head>
 <body class="terminal-body">
 
-   <nav class="terminal-nav">
-      <div class="nav-left">
-         <div class="brand-logo">
-            <span class="logo-icon">◈</span>
-            <span class="logo-text">APEX SMC <span class="logo-gold">TERMINAL</span></span>
+   <header class="global-command-bar">
+      <div class="cmd-left">
+         <div class="brand">
+            <span class="logo-symbol">◈</span>
+            <span class="logo-text">APEX <span class="text-accent">SMC</span></span>
          </div>
-         <div class="global-ticker" id="globalTicker">
-            <div class="ticker-loading">Initializing Market Feed...</div>
+         <div class="ticker-strip" id="globalTicker">
+            <div class="ticker-loading">SYNCING MARKET DATA...</div>
          </div>
       </div>
       
-      <div class="nav-right">
-         <div class="account-summary">
-            <div class="summary-item">
-               <span class="label">EQUITY</span>
-               <span class="value" id="navEquity">$0.00</span>
+      <div class="cmd-right">
+         <div class="metric-group">
+            <div class="metric">
+               <span class="m-label">EQUITY</span>
+               <span class="m-value" id="navEquity">0.00</span>
             </div>
-            <div class="summary-item">
-               <span class="label">DAILY PNL</span>
-               <span class="value" id="navPnL">$0.00</span>
+            <div class="metric">
+               <span class="m-label">DAILY PNL</span>
+               <span class="m-value" id="navPnL">0.00</span>
             </div>
-            <div class="summary-item">
-               <span class="label">STATUS</span>
-               <span class="status-badge online" id="navStatus">CONNECTED</span>
+            <div class="connection-status">
+               <span class="status-dot"></span>
+               <span class="status-text" id="navStatus">CONNECTED</span>
             </div>
          </div>
          <div class="user-profile" onclick="toggleUserMenu()">
             <div class="avatar" id="navAvatar">U</div>
-            <div class="user-name" id="navUserName">User</div>
+            <div class="user-info">
+               <span class="user-name" id="navUserName">User</span>
+               <span class="user-role">INSTITUTIONAL</span>
+            </div>
             <div class="user-dropdown" id="userDropdown">
                <div class="dropdown-item" onclick="logout()">Logout</div>
-               <div class="dropdown-item">Settings</div>
+               <div class="dropdown-item">Account Settings</div>
             </div>
          </div>
       </div>
-   </nav>
+   </header>
 
-   <main class="terminal-grid">
-      <aside class="zone-watchlist">
-         <div class="zone-header">
-            <h2>Watchlist</h2>
-            <span class="zone-icon">📊</span>
+   <main class="terminal-layout">
+      <!-- LEFT: HIGH-DENSITY WATCHLIST -->
+      <section class="panel panel-watchlist">
+         <div class="panel-header">
+            <span class="header-title">Market Watch</span>
+            <div class="header-actions">
+               <button class="icon-btn">🔍</button>
+            </div>
          </div>
-         <div class="watchlist-container" id="watchlist"></div>
-      </aside>
+         <div class="watchlist-scroll" id="watchlist">
+            <!-- Items injected by JS -->
+         </div>
+      </section>
 
-      <section class="zone-hub">
-         <div class="hub-header">
-            <div class="symbol-info">
+      <!-- CENTER: ANALYSIS HUB -->
+      <section class="panel panel-hub">
+         <div class="hub-top-bar">
+            <div class="asset-identity">
                <h1 id="activeSymbol">BTC/USDT</h1>
-               <div class="price-display">
-                  <span id="mainPrice" class="price-value">0.00</span>
-                  <span id="mainChange" class="price-change">0.00%</span>
+               <div class="price-cluster">
+                  <span id="mainPrice" class="price-main">0.00</span>
+                  <span id="mainChange" class="price-delta">0.00%</span>
                </div>
             </div>
-            <div class="hub-controls">
-               <div class="tf-group" id="timeframeGroup"></div>
-               <div class="smc-toggles">
-                  <button class="toggle-btn active" data-layer="ob">OB</button>
-                  <button class="toggle-btn active" data-layer="fvg">FVG</button>
-                  <button class="toggle-btn active" data-layer="bos">BOS</button>
+            <div class="hub-tooling">
+               <div class="timeframe-selector" id="timeframeGroup">
+                  <!-- Buttons injected by JS -->
+               </div>
+               <div class="smc-floating-panel">
+                  <div class="panel-label">SMC LAYERS</div>
+                  <div class="toggle-group">
+                     <button class="smc-toggle active" data-layer="ob" title="Order Blocks">OB</button>
+                     <button class="smc-toggle active" data-layer="fvg" title="Fair Value Gaps">FVG</button>
+                     <button class="smc-toggle active" data-layer="bos" title="Break of Structure">BOS</button>
+                  </div>
                </div>
             </div>
          </div>
 
-         <div class="chart-wrapper">
-            <div id="mainChart" class="chart-instance">
+         <div class="chart-container">
+            <div id="mainChart" class="chart-canvas">
                <div id="chartTooltip" class="chart-tooltip"></div>
-               <div class="chart-loading" id="chartLoading">
-                  <div class="spinner"></div>
-                  <span>Syncing Market Data...</span>
+               <div class="chart-overlay-loader" id="chartLoading">
+                  <div class="skeleton-loader"></div>
+                  <span>INITIALIZING KINETIC ENGINE...</span>
                </div>
             </div>
          </div>
 
-         <div class="analysis-footer">
-            <div class="analysis-card" id="smcContextCard">
-               <span class="card-label">Market Structure</span>
-               <span class="card-value" id="smcContext">Analyzing...</span>
+         <div class="hub-bottom-metrics">
+            <div class="metric-card">
+               <span class="m-label">Structure</span>
+               <span class="m-value" id="smcContext">Analyzing...</span>
             </div>
-            <div class="analysis-card">
-               <span class="card-label">Signal Confidence</span>
-               <span class="card-value" id="smcScore">--%</span>
+            <div class="metric-card">
+               <span class="m-label">Confidence</span>
+               <span class="m-value" id="smcScore">--%</span>
             </div>
-            <div class="analysis-card">
-               <span class="card-label">Current Trend</span>
-               <span class="card-value" id="smcTrend">Detecting...</span>
+            <div class="metric-card">
+               <span class="m-label">Trend</span>
+               <span class="m-value" id="smcTrend">Detecting...</span>
             </div>
          </div>
       </section>
 
-      <aside class="zone-execution">
-         <div class="zone-header">
-            <h2>Market Sentiment</h2>
-            <span class="zone-icon">🌐</span>
-         </div>
-         <div class="tv-widget-container" style="height: 300px; background: #000;">
-            <div id="tradingview_widget" style="height:100%; width:100%;"></div>
-            <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
-            <script type="text/javascript">
-               new TradingView.widget({
-                  "width": "100%",
-                  "height": 300,
-                  "symbol": "BINANCE:BTCUSDT",
-                  "interval": "D",
-                  "timezone": "Etc/UTC",
-                  "theme": "dark",
-                  "style": "1",
-                  "locale": "en",
-                  "toolbar_bg": "#f1f3f6",
-                  "enable_trading": false,
-                  "hide_top_toolbar": true,
-                  "save_image": false,
-                  "container_id": "tradingview_widget",
-               });
-            </script>
+      <!-- RIGHT: EXECUTION ENGINE -->
+      <section class="panel panel-execution">
+         <div class="panel-header">
+            <span class="header-title">Execution Engine</span>
+            <div class="header-actions">
+               <button class="filter-pill active" data-filter="all">All</button>
+               <button class="filter-pill" data-filter="open">Open</button>
+            </div>
          </div>
          
-         <div class="zone-header" style="border-top: 1px solid var(--border-color); margin-top: 1rem;">
-            <h2>Signal Feed</h2>
-            <div class="feed-filters">
-               <button class="filter-btn active" data-filter="all">All</button>
-               <button class="filter-btn" data-filter="open">Open</button>
-            </div>
+         <div class="signal-stream" id="signalsList">
+            <!-- Trade Tickets injected by JS -->
          </div>
-         <div class="signal-feed" id="signalsList"></div>
          
-         <div class="compliance-footer">
-            <div class="compliance-item">
-               <span class="label">Daily Loss</span>
-               <div class="meter-container">
-                  <div class="meter-fill" id="lossMeter"></div>
+         <div class="compliance-dock">
+            <div class="compliance-row">
+               <div class="comp-info">
+                  <span class="comp-label">Daily Loss</span>
+                  <span class="comp-value" id="lossValue">0% / 5%</span>
                </div>
-               <span class="value" id="lossValue">0% / 5%</span>
+               <div class="comp-track">
+                  <div class="comp-fill" id="lossMeter"></div>
+               </div>
             </div>
-            <div class="compliance-item">
-               <span class="label">Max Drawdown</span>
-               <div class="meter-container">
-                  <div class="meter-fill" id="ddMeter"></div>
+            <div class="compliance-row">
+               <div class="comp-info">
+                  <span class="comp-label">Max Drawdown</span>
+                  <span class="comp-value" id="ddValue">0% / 10%</span>
                </div>
-               <span class="value" id="ddValue">0% / 10%</span>
+               <div class="comp-track">
+                  <div class="comp-fill" id="ddMeter"></div>
+               </div>
             </div>
          </div>
-      </aside>
+      </section>
    </main>
 
    <div id="toastContainer" class="toast-container"></div>
    <div id="globalLoader" class="global-loader">
-      <div class="loader-circle"></div>
+      <div class="loader-core"></div>
    </div>
 
    <script src="market-data.js"></script>

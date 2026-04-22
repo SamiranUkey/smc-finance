@@ -9,37 +9,31 @@ class MarketData {
       this.klineCache = {};
       this.ws = null;
       this.reconnectAttempts = 0;
-      this.maxReconnectAttempts = 5;
-      this.reconnectDelay = 3000;
+      this.maxReconnectAttempts = 10;
+      this.reconnectDelay = 5000;
       this.forexInterval = null;
       this.forexCache = {};
    }
    
-   /* ================================================
-      CONNECT TO BINANCE WEBSOCKET
-      ================================================ */
    connect() {
-      if (this.ws && this.ws.readyState === WebSocket.OPEN) return;
+      if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) return;
       
-      // Expanded symbol list to cover all dashboard pairs
-      // Binance uses USDT pairs for most of these
-      const symbols = [
-         'btcusdt', 'ethusdt', 'solusdt', 'bnbusdt', 
-         'eurusdt', 'gbpusdt', 'usdjpy', 'paxgusdt' // PAXG is Gold
-      ];
-      
+      // Use lowercase for Binance combined streams
+      const symbols = ['btcusdt', 'ethusdt', 'solusdt', 'bnbusdt', 'eurusdt', 'gbpusdt', 'usdjpy', 'paxgusdt'];
       const streams = [];
+      
       symbols.forEach(s => {
          streams.push(`${s}@ticker`);
          streams.push(`${s}@kline_1m`);
       });
       
       const wsUrl = `wss://stream.binance.com:9443/stream?streams=${streams.join('/')}`;
+      console.log('[MarketData] Connecting to Binance WebSocket...', wsUrl);
       
       this.ws = new WebSocket(wsUrl);
       
       this.ws.onopen = () => {
-         console.log('[MarketData] WebSocket connected to Binance');
+         console.log('[MarketData] ✅ WebSocket Connected');
          this.reconnectAttempts = 0;
          this.notify({ type: 'connected' });
          this.startForexPolling();
@@ -53,7 +47,6 @@ class MarketData {
             
             if (!data) return;
             
-            // Ticker Update
             if (stream.includes('@ticker')) {
                const symbol = data.s; 
                const ticker = {
@@ -70,7 +63,6 @@ class MarketData {
                this.priceCache[symbol] = ticker;
                this.notify({ type: 'ticker', data: ticker });
             } 
-            // Kline Update
             else if (stream.includes('@kline')) {
                const kline = {
                   symbol: this.formatSymbol(data.s),
@@ -80,23 +72,23 @@ class MarketData {
                      h: data.h,
                      l: data.l,
                      c: data.c,
-                     v: data.v
+                     v: data.v,
+                     x: data.x // is candle closed?
                   }
                };
                this.notify({ type: 'kline', data: kline });
             }
-            
          } catch (e) {
-            console.error('[MarketData] Parse error:', e);
+            console.error('[MarketData] WebSocket Parse Error:', e);
          }
       };
       
       this.ws.onerror = (error) => {
-         console.warn('[MarketData] WebSocket error:', error);
+         console.error('[MarketData] WebSocket Error:', error);
       };
       
-      this.ws.onclose = () => {
-         console.warn('[MarketData] WebSocket closed');
+      this.ws.onclose = (event) => {
+         console.warn(`[MarketData] WebSocket Closed (Code: ${event.code}). Attempting reconnect...`);
          this.notify({ type: 'disconnected' });
          this.attemptReconnect();
       };
@@ -104,14 +96,12 @@ class MarketData {
    
    attemptReconnect() {
       if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-         console.error('[MarketData] Max reconnect attempts reached');
+         console.error('[MarketData] Max reconnect attempts reached. Please refresh page.');
          return;
       }
+      
       this.reconnectAttempts++;
-      setTimeout(() => {
-         this.ws = null;
-         this.connect();
-      }, this.reconnectDelay);
+      setTimeout(() => this.connect(), this.reconnectDelay);
    }
    
    disconnect() {
@@ -122,7 +112,6 @@ class MarketData {
    formatSymbol(symbol) {
       if (!symbol) return 'UNKNOWN';
       const s = symbol.toUpperCase();
-      // Map PAXGUSDT to XAU/USD for the dashboard
       if (s === 'PAXGUSDT') return 'XAU/USD';
       if (s.endsWith('USDT')) return s.replace('USDT', '/USDT');
       if (s.endsWith('USD')) return s.replace('USD', '/USD');
@@ -139,7 +128,7 @@ class MarketData {
    
    startForexPolling() {
       this.fetchForexRates();
-      this.forexInterval = setInterval(() => this.fetchForexRates(), 5000);
+      this.forexInterval = setInterval(() => this.fetchForexRates(), 10000);
    }
    
    async fetchForexRates() {

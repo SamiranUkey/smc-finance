@@ -939,17 +939,19 @@ async function initCharts() {
    REAL-TIME CHART UPDATES from Binance WebSocket
    ================================================ */
 function updateChartFromKline(klineData) {
-   // Update the last candle with real-time data
    if (!klineData) return;
    
    const { symbol, kline } = klineData;
-   const binanceSymbol = symbol.replace('/', '');
+   const binanceSymbol = symbol.replace('/', '').toUpperCase();
+   if (binanceSymbol === 'XAU/USD') { /* handle mapping if needed */ }
+   
    const currentBinance = state.currentBinance || 'BTCUSDT';
    
    // Only update if this is the current symbol
-   if (binanceSymbol !== currentBinance) return;
+   // Check if the formatted symbol matches current symbol
+   if (symbol !== state.currentSymbol) return;
    
-   // Update hero chart
+   // 1. Update chart visual
    if (state.charts.heroCandles && kline) {
       try {
          state.charts.heroCandles.update({
@@ -959,12 +961,9 @@ function updateChartFromKline(klineData) {
             low: parseFloat(kline.l),
             close: parseFloat(kline.c)
          });
-      } catch (e) {
-         // Ignore update errors (out of bounds, etc.)
-      }
+      } catch (e) {}
    }
    
-   // Update main chart
    if (state.charts.mainCandles && kline) {
       try {
          state.charts.mainCandles.update({
@@ -974,10 +973,42 @@ function updateChartFromKline(klineData) {
             low: parseFloat(kline.l),
             close: parseFloat(kline.c)
          });
-      } catch (e) {
-         // Ignore update errors
-      }
+      } catch (e) {}
    }
+
+   // 2. Update internal klineData state for SMC Analysis
+   const key = symbol + state.currentTimeframe;
+   if (!state.klineData[key]) state.klineData[key] = [];
+   
+   const data = state.klineData[key];
+   const lastCandle = data[data.length - 1];
+   
+   if (lastCandle && lastCandle.time === Math.floor(kline.t / 1000)) {
+      // Update existing candle
+      data[data.length - 1] = {
+         time: Math.floor(kline.t / 1000),
+         open: parseFloat(kline.o),
+         high: parseFloat(kline.h),
+         low: parseFloat(kline.l),
+         close: parseFloat(kline.c),
+         volume: parseFloat(kline.v)
+      };
+   } else {
+      // Append new candle
+      data.push({
+         time: Math.floor(kline.t / 1000),
+         open: parseFloat(kline.o),
+         high: parseFloat(kline.h),
+         low: parseFloat(kline.l),
+         close: parseFloat(kline.c),
+         volume: parseFloat(kline.v)
+      });
+      // Keep only last 500 candles
+      if (data.length > 500) data.shift();
+   }
+   
+   // 3. Trigger SMC Analysis on every update
+   runSMCAnalysis();
 }
 
 /* ================================================

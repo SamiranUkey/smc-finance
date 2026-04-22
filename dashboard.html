@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>Dashboard | Apex SMC Capital</title>
+   <link rel="preconnect" href="https://fonts.googleapis.com">
+   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+   <script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js"></script>
+   <link rel="stylesheet" href="styles.css">
+</head>
+<body class="dashboard-page">
+   <!-- Navigation -->
+   <nav class="navbar dashboard-nav">
+      <div class="nav-container">
+         <div class="nav-brand">
+            <span class="brand-icon">◆</span>
+            <span class="brand-text">APEX SMC CAPITAL</span>
+         </div>
+         <div class="nav-links">
+            <a href="#dashboard" class="nav-link active">Dashboard</a>
+            <a href="#signals" class="nav-link">Signals</a>
+            <a href="#analytics" class="nav-link">Analytics</a>
+            <a href="#settings" class="nav-link">Settings</a>
+         </div>
+         <div class="nav-actions">
+            <div class="connection-status online" id="connectionStatus">
+               <span class="status-dot"></span>
+               <span class="status-text">Live</span>
+            </div>
+            <div class="user-menu" id="userMenu">
+               <button class="user-menu-btn" onclick="toggleUserMenu()">
+                  <span class="user-avatar" id="userAvatar">A</span>
+                  <span class="user-name" id="userName">Trader</span>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+               </button>
+               <div class="user-dropdown" id="userDropdown">
+                  <a href="#settings" class="dropdown-item">
+                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                     Settings
+                  </a>
+                  <a href="#" class="dropdown-item" onclick="logout()">
+                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+                     Logout
+                  </a>
+               </div>
+            </div>
+         </div>
+      </div>
+   </nav>
+
+   <!-- Main Dashboard -->
+   <main class="dashboard" id="dashboard">
+      <!-- Ticker -->
+      <section class="signal-ticker">
+         <div class="ticker-wrapper">
+            <div class="ticker-track" id="tickerTrack"></div>
+         </div>
+      </section>
+
+      <!-- Primary Layout: Chart + Sidebar -->
+      <div class="dashboard-main">
+         <!-- Left: Chart + Stats -->
+         <div class="dashboard-left">
+            <!-- Account Overview Panel -->
+            <section class="panel account-panel">
+               <div class="account-overview">
+                  <div class="account-main">
+                     <div class="account-balance">
+                        <span class="account-label">Account Balance</span>
+                        <span class="account-value" id="accountBalance">$50,000.00</span>
+                     </div>
+                     <div class="account-equity">
+                        <span class="account-label">Equity</span>
+                        <span class="account-value profit" id="accountEquity">$51,847.32</span>
+                     </div>
+                  </div>
+                  <div class="account-stats">
+                     <div class="account-stat">
+                        <span class="stat-label">Daily P&L</span>
+                        <span class="stat-value profit" id="dailyPnL">+$847.32</span>
+                     </div>
+                     <div class="account-stat">
+                        <span class="stat-label">Open Positions</span>
+                        <span class="stat-value" id="openPositionsCount">3 / 5</span>
+                     </div>
+                     <div class="account-stat">
+                        <span class="stat-label">Win Rate</span>
+                        <span class="stat-value" id="winRateDisplay">78.4%</span>
+                     </div>
+                  </div>
+               </div>
+               <div class="mt5-connection-bar">
+                  <div class="mt5-status">
+                     <span class="mt5-indicator" id="mt5Indicator"></span>
+                     <span class="mt5-label">MT5 Connection</span>
+                     <span class="mt5-broker" id="mt5Broker">Not Connected</span>
+                  </div>
+                  <button class="btn btn-sm" id="mt5ConnectBtn" onclick="openMT5Modal()">
+                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+                     Connect MT5
+                  </button>
+               </div>
+            </section>
+
+            <!-- Chart Panel -->
+            <section class="panel chart-panel">
+               <div class="panel-header">
+                  <div class="chart-symbol-info">
+                     <span class="symbol-name" id="currentSymbolName">BTC/USDT</span>
+                     <span class="symbol-price" id="currentSymbolPrice">67,445.30</span>
+                     <span class="symbol-change up" id="currentSymbolChange">+2.34%</span>
+                  </div>
+                  <div class="chart-toolbar">
+                     <div class="toolbar-group">
+                        <button class="toolbar-btn active" data-tf="1">M1</button>
+                        <button class="toolbar-btn" data-tf="5">M5</button>
+                        <button class="toolbar-btn" data-tf="15">M15</button>
+                        <button class="toolbar-btn active" data-tf="60">H1</button>
+                        <button class="toolbar-btn" data-tf="240">H4</button>
+                        <button class="toolbar-btn" data-tf="1D">D1</button>
+                     </div>
+                     <div class="toolbar-divider"></div>
+                     <div class="toolbar-group">
+                        <button class="toolbar-btn indicator-btn" title="EMA"><span>EMA</span></button>
+                        <button class="toolbar-btn indicator-btn active" title="SMA"><span>SMA</span></button>
+                        <button class="toolbar-btn indicator-btn" title="SR Levels"><span>SR</span></button>
+                        <button class="toolbar-btn indicator-btn active" title="Order Blocks"><span>OB</span></button>
+                        <button class="toolbar-btn indicator-btn" title="Fair Value Gap"><span>FVG</span></button>
+                     </div>
+                     <div class="toolbar-divider"></div>
+                     <button class="toolbar-btn icon-btn" onclick="toggleFullscreen()" title="Fullscreen">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+                     </button>
+                  </div>
+               </div>
+               <div class="chart-container" id="mainChart">
+                  <div class="chart-loading" id="chartLoading">
+                     <div class="loading-spinner"></div>
+                     <span>Loading chart data...</span>
+                  </div>
+               </div>
+               <div class="chart-symlist">
+                  <button class="sym-btn active" data-sym="BINANCE:BTCUSDT">BTC</button>
+                  <button class="sym-btn" data-sym="BINANCE:ETHUSDT">ETH</button>
+                  <button class="sym-btn" data-sym="BINANCE:EURUSD">EUR</button>
+                  <button class="sym-btn" data-sym="BINANCE:GBPUSD">GBP</button>
+                  <button class="sym-btn" data-sym="BINANCE:USDJPY">JPY</button>
+                  <button class="sym-btn" data-sym="BINANCE:GOLD">XAU</button>
+               </div>
+            </section>
+         </div>
+
+         <!-- Right Sidebar -->
+         <aside class="dashboard-sidebar">
+            <!-- Signals Panel -->
+            <section class="panel signals-panel" id="signals">
+               <div class="panel-header">
+                  <h2>
+                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                     Live Signals
+                  </h2>
+                  <div class="signal-count">
+                     <span class="count-badge open" id="openSignalsBadge">5</span>
+                     <span class="count-label">Active</span>
+                  </div>
+               </div>
+               <div class="signals-filters">
+                  <button class="filter-btn active" data-filter="all">All</button>
+                  <button class="filter-btn" data-filter="long">Long</button>
+                  <button class="filter-btn" data-filter="short">Short</button>
+                  <button class="filter-btn" data-filter="closed">Closed</button>
+               </div>
+               <div class="signals-list" id="signalsList"></div>
+            </section>
+
+            <!-- SMC Analysis Panel -->
+            <section class="panel smc-panel" id="smcPanel">
+               <div class="panel-header" onclick="toggleSMCPanel()" style="cursor:pointer">
+                  <h2>
+                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+                     SMC Analysis
+                  </h2>
+                  <span class="smc-toggle" id="smcToggle">▼</span>
+               </div>
+               <div class="smc-content" id="smcContent">
+                  <div class="smc-context">
+                     <span class="context-label">Market Structure:</span>
+                     <span id="smcContext" class="context-badge ranging">Detecting...</span>
+                  </div>
+                  <div class="smc-section">
+                     <div class="smc-section-title">Order Blocks</div>
+                     <div id="obList" class="smc-list"></div>
+                  </div>
+                  <div class="smc-section">
+                     <div class="smc-section-title">Fair Value Gaps</div>
+                     <div id="fvgList" class="smc-list"></div>
+                  </div>
+                  <div class="smc-section">
+                     <div class="smc-section-title">Break of Structure</div>
+                     <div id="bosList" class="smc-list"></div>
+                  </div>
+                  <div class="smc-section">
+                     <div class="smc-section-title">Liquidity Zones</div>
+                     <div id="liqList" class="smc-list"></div>
+                  </div>
+                  <div class="smc-score">
+                     <span>Signal Confidence:</span>
+                     <span id="smcScore" class="score-value">--</span>
+                  </div>
+               </div>
+            </section>
+
+            <!-- Risk Panel -->
+            <section class="panel risk-panel">
+               <div class="panel-header">
+                  <h2>
+                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                     Risk Compliance
+                  </h2>
+                  <span class="risk-badge safe" id="riskBadge">PROTECTED</span>
+               </div>
+               <div class="risk-overview">
+                  <div class="risk-stat">
+                     <span class="risk-stat-label">Daily Loss</span>
+                     <span class="risk-stat-value" id="dailyLossValue">-0.84%</span>
+                  </div>
+                  <div class="risk-stat">
+                     <span class="risk-stat-label">Max DD</span>
+                     <span class="risk-stat-value" id="maxDDValue">-2.1%</span>
+                  </div>
+                  <div class="risk-stat">
+                     <span class="risk-stat-label">Consec Loss</span>
+                     <span class="risk-stat-value" id="consecLossValue">2</span>
+                  </div>
+               </div>
+               <div class="risk-meter-group">
+                  <div class="risk-meter-item">
+                     <div class="meter-header">
+                        <span>Daily Loss Limit</span>
+                        <span id="dailyRiskUsed">16.8% of 5%</span>
+                     </div>
+                     <div class="meter-bar">
+                        <div class="meter-fill" id="dailyRiskFill" style="width: 16.8%"></div>
+                     </div>
+                  </div>
+                  <div class="risk-meter-item">
+                     <div class="meter-header">
+                        <span>Max Drawdown</span>
+                        <span id="drawdownUsed">21% of 10%</span>
+                     </div>
+                     <div class="meter-bar">
+                        <div class="meter-fill" id="drawdownFill" style="width: 21%"></div>
+                     </div>
+                  </div>
+                  <div class="risk-meter-item">
+                     <div class="meter-header">
+                        <span>Positions</span>
+                        <span id="positionsMeter">3 / 5</span>
+                     </div>
+                     <div class="meter-bar">
+                        <div class="meter-fill positions" id="positionsFill" style="width: 60%"></div>
+                     </div>
+                  </div>
+               </div>
+               <div class="prop-firm-rules">
+                  <h4>Prop Firm Rules</h4>
+                  <div class="rule-item">
+                     <span class="rule-icon ok">✓</span>
+                     <span>5% daily loss limit</span>
+                  </div>
+                  <div class="rule-item">
+                     <span class="rule-icon ok">✓</span>
+                     <span>10% max drawdown</span>
+                  </div>
+                  <div class="rule-item">
+                     <span class="rule-icon ok">✓</span>
+                     <span>Lot size compliance</span>
+                  </div>
+                  <div class="rule-item">
+                     <span class="rule-icon ok">✓</span>
+                     <span>Trade spacing</span>
+                  </div>
+               </div>
+            </section>
+         </aside>
+      </div>
+
+      <!-- Analytics Section -->
+      <section class="panel analytics-panel" id="analytics">
+         <div class="panel-header">
+            <h2>
+               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+               Performance Analytics
+            </h2>
+            <select id="analyticsPeriod" class="period-select">
+               <option value="7">Last 7 Days</option>
+               <option value="30" selected>Last 30 Days</option>
+               <option value="90">Last 90 Days</option>
+               <option value="365">Year to Date</option>
+            </select>
+         </div>
+         <div class="analytics-content">
+            <div class="analytics-metrics">
+               <div class="analytics-metric">
+                  <span class="metric-label">Total P&L</span>
+                  <span class="metric-value profit" id="totalPnL">+$8,472.50</span>
+                  <span class="metric-change up">+16.95%</span>
+               </div>
+               <div class="analytics-metric">
+                  <span class="metric-label">Sharpe Ratio</span>
+                  <span class="metric-value">2.34</span>
+                  <span class="metric-badge excellent">Excellent</span>
+               </div>
+               <div class="analytics-metric">
+                  <span class="metric-label">Win Rate</span>
+                  <span class="metric-value" id="analyticsWinRate">78.4%</span>
+                  <span class="metric-change up">+4.2%</span>
+               </div>
+               <div class="analytics-metric">
+                  <span class="metric-label">Profit Factor</span>
+                  <span class="metric-value" id="profitFactor">2.87</span>
+                  <span class="metric-badge good">Good</span>
+               </div>
+               <div class="analytics-metric">
+                  <span class="metric-label">Max Drawdown</span>
+                  <span class="metric-value loss" id="maxDrawdown">-4.2%</span>
+                  <span class="metric-badge safe">Within Risk</span>
+               </div>
+               <div class="analytics-metric">
+                  <span class="metric-label">Avg Trade</span>
+                  <span class="metric-value profit" id="avgTrade">+$127.40</span>
+                  <span class="metric-change up">+2.1%</span>
+               </div>
+            </div>
+            <div class="equity-section">
+               <h3>Equity Curve</h3>
+               <div id="equityChart" class="equity-chart"></div>
+            </div>
+         </div>
+      </section>
+   </main>
+
+   <!-- MT5 Connection Modal -->
+   <div class="modal-overlay" id="mt5Modal">
+      <div class="modal mt5-modal">
+         <div class="modal-header">
+            <h2>
+               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+               Connect MT5 Account
+            </h2>
+            <button class="modal-close" onclick="closeMT5Modal()">×</button>
+         </div>
+         <div class="modal-body">
+            <div class="mt5-steps">
+               <div class="step active" data-step="1">
+                  <div class="step-number">1</div>
+                  <div class="step-content">
+                     <h4>Download MT5</h4>
+                     <p>Download MetaTrader 5 from your broker's website</p>
+                  </div>
+               </div>
+               <div class="step" data-step="2">
+                  <div class="step-number">2</div>
+                  <div class="step-content">
+                     <h4>Install EA</h4>
+                     <p>Copy SMC_Receiver_EA.ex5 to MQL5/Experts folder</p>
+                  </div>
+               </div>
+               <div class="step" data-step="3">
+                  <div class="step-number">3</div>
+                  <div class="step-content">
+                     <h4>Configure EA</h4>
+                     <p>Set your API Key and Dashboard URL in EA settings</p>
+                  </div>
+               </div>
+               <div class="step" data-step="4">
+                  <div class="step-number">4</div>
+                  <div class="step-content">
+                     <h4>Enable Auto-Trading</h4>
+                     <p>Allow DLL imports and auto-trading in MT5</p>
+                  </div>
+               </div>
+            </div>
+            <div class="mt5-form">
+               <div class="auth-field">
+                  <label>Broker Name</label>
+                  <input type="text" id="mt5BrokerName" placeholder="e.g., IC Markets">
+               </div>
+               <div class="auth-field">
+                  <label>Account Login</label>
+                  <input type="text" id="mt5Login" placeholder="Your MT5 account number">
+               </div>
+               <div class="auth-field">
+                  <label>Account Password</label>
+                  <input type="password" id="mt5Password" placeholder="Your MT5 password">
+               </div>
+               <div class="auth-field">
+                  <label>Server</label>
+                  <input type="text" id="mt5Server" placeholder="e.g., ICMarketsSC-Demo">
+               </div>
+            </div>
+            <button class="btn btn-primary full-width" onclick="connectMT5()">
+               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+               Connect Account
+            </button>
+            <p class="mt5-note">Your credentials are encrypted and stored securely. We never share your data.</p>
+         </div>
+      </div>
+   </div>
+
+   <!-- Risk Calculator Modal -->
+   <div class="modal-overlay" id="riskModal">
+      <div class="modal">
+         <div class="modal-header">
+            <h2>
+               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4m0 4h.01M3 12a9 9 0 1 1 18 0 9 9 0 0 1-18 0z"/></svg>
+               Position Size Calculator
+            </h2>
+            <button class="modal-close" onclick="closeRiskModal()">×</button>
+         </div>
+         <div class="modal-body">
+            <div class="calc-field">
+               <label>Account Size</label>
+               <div class="input-with-prefix">
+                  <span class="input-prefix">$</span>
+                  <input type="number" id="modalAccount" value="50000">
+               </div>
+            </div>
+            <div class="calc-field">
+               <label>Entry Price</label>
+               <input type="number" id="modalEntry" step="0.00001" placeholder="0.00">
+            </div>
+            <div class="calc-field">
+               <label>Stop Loss Price</label>
+               <input type="number" id="modalSL" step="0.00001" placeholder="0.00">
+            </div>
+            <div class="calc-field">
+               <label>Take Profit Price</label>
+               <input type="number" id="modalTP" step="0.00001" placeholder="0.00">
+            </div>
+            <div class="calc-field">
+               <label>Risk Percentage</label>
+               <div class="input-with-suffix">
+                  <input type="number" id="modalRisk" value="1" min="0.1" max="5" step="0.1">
+                  <span class="input-suffix">%</span>
+               </div>
+            </div>
+            <button class="btn btn-primary full-width" onclick="runRiskCalculation()">
+               Calculate
+            </button>
+            <div class="calc-results">
+               <div class="result-row"><span>Position Size</span><span id="modalPositionSize">—</span></div>
+               <div class="result-row"><span>Risk Amount</span><span id="modalRiskAmount">—</span></div>
+               <div class="result-row"><span>Reward Amount</span><span id="modalRewardAmount">—</span></div>
+               <div class="result-row"><span>Risk:Reward</span><span id="modalRR">—</span></div>
+               <div class="result-row highlight"><span>Expected Value</span><span id="modalExpected">—</span></div>
+            </div>
+         </div>
+      </div>
+   </div>
+
+   <!-- Settings Modal -->
+   <div class="modal-overlay" id="settingsModal">
+      <div class="modal settings-modal">
+         <div class="modal-header">
+            <h2>
+               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+               Account Settings
+            </h2>
+            <button class="modal-close" onclick="closeSettingsModal()">×</button>
+         </div>
+         <div class="modal-body">
+            <div class="settings-tabs">
+               <button class="settings-tab active" data-tab="profile">Profile</button>
+               <button class="settings-tab" data-tab="api">API Keys</button>
+               <button class="settings-tab" data-tab="subscription">Subscription</button>
+            </div>
+            <div class="settings-content">
+               <div class="settings-panel active" id="profilePanel">
+                  <div class="auth-field">
+                     <label>Full Name</label>
+                     <input type="text" id="settingsName" value="">
+                  </div>
+                  <div class="auth-field">
+                     <label>Email</label>
+                     <input type="email" id="settingsEmail" value="" disabled>
+                  </div>
+                  <div class="auth-field">
+                     <label>Current Plan</label>
+                     <div class="plan-display">
+                        <span class="plan-badge" id="currentPlan">PRO</span>
+                        <a href="#pricing" class="plan-upgrade">Upgrade</a>
+                     </div>
+                  </div>
+                  <button class="btn btn-primary" onclick="saveProfile()">Save Changes</button>
+               </div>
+               <div class="settings-panel" id="apiPanel">
+                  <div class="api-key-display">
+                     <label>Your API Key</label>
+                     <div class="api-key-box">
+                        <code id="apiKeyDisplay">Loading...</code>
+                        <button class="btn btn-sm" onclick="copyApiKey()">Copy</button>
+                     </div>
+                     <span class="field-hint">Use this key to connect your MT5 EA</span>
+                  </div>
+               </div>
+               <div class="settings-panel" id="subscriptionPanel">
+                  <div class="subscription-info">
+                     <h4>Current Subscription</h4>
+                     <div class="sub-details">
+                        <div class="sub-row"><span>Provider</span><span>SMC Capital Pro</span></div>
+                        <div class="sub-row"><span>Plan</span><span>Monthly</span></div>
+                        <div class="sub-row"><span>Status</span><span class="status-active">Active</span></div>
+                        <div class="sub-row"><span>Renews</span><span>May 15, 2026</span></div>
+                     </div>
+                     <button class="btn btn-outline" onclick="cancelSubscription()">Cancel Subscription</button>
+                  </div>
+               </div>
+            </div>
+         </div>
+      </div>
+   </div>
+
+   <!-- Toast Container -->
+   <div class="toast-container" id="toastContainer"></div>
+
+   <script src="market-data.js"></script>
+   <script src="smc-analysis.js"></script>
+   <script src="app.js"></script>
+</body>
+</html>

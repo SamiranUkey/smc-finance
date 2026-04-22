@@ -105,6 +105,20 @@ const db = {
           created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
         );
       `);
+
+      await this.query(`
+        CREATE TABLE IF NOT EXISTS account_history (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          date DATE NOT NULL,
+          balance REAL NOT NULL,
+          equity REAL NOT NULL,
+          daily_pnl REAL NOT NULL,
+          max_drawdown REAL NOT NULL,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(user_id, date)
+        );
+      `);
       
       console.log('PostgreSQL schema verified and ready.');
     } catch (err) {

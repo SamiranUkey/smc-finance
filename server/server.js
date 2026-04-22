@@ -19,7 +19,7 @@ const sseClients = new Set();
 // Middleware
 app.use(cors({
    origin: process.env.NODE_ENV === 'production' 
-      ? process.env.FRONTEND_URL || 'https://your-domain.netlify.app' 
+      ? 'https://peppy-moxie-bc39a3.netlify.app' 
       : ['http://localhost:3000', 'http://localhost:3001'],
    credentials: true
 }));

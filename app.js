@@ -174,13 +174,8 @@ async function handleLogin() {
          showToast('Login successful!', 'success');
          updateUserUI();
          
-         setTimeout(() => {
-            closeAuthModal();
-            if (document.querySelector('.dashboard-page')) {
-               fetchDashboardData();
-               connectSSE();
-            }
-         }, 500);
+         // Redirect to dashboard immediately
+         window.location.href = 'dashboard.html';
       }
    } catch (error) {
       if (errorEl) errorEl.classList.remove('hidden');

@@ -893,3 +893,25 @@ a:hover { color: var(--accent-hover); }
 }
 .price-up { color: #00d4aa !important; }
 .price-down { color: #ff4757 !important; }
+
+.chart-tooltip {
+   position: absolute;
+   display: none;
+   padding: 8px 12px;
+   background: rgba(22, 42, 63, 0.9);
+   border: 1px solid #2d3d54;
+   border-radius: 4px;
+   color: #8b9ab5;
+   font-family: 'JetBrains Mono', monospace;
+   font-size: 11px;
+   pointer-events: none;
+   z-index: 1000;
+   box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+   white-space: nowrap;
+}
+.chart-tooltip span {
+   margin-right: 10px;
+}
+.chart-tooltip b {
+   color: #fff;
+}

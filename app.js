@@ -912,9 +912,9 @@ async function initCharts() {
             ema20Series.setData(ema20);
             ema50Series.setData(ema50);
             
-            // Store kline data for SMC analysis
+            // CORRECTED: Store in the cache object, not as the object itself
             const key = mainSymbol + tf;
-            state.klineData = klines;
+            state.klineData[key] = klines;
             
             // Run SMC analysis on loaded data
             runSMCAnalysis();
@@ -961,13 +961,9 @@ function updateChartFromKline(klineData) {
    
    const { symbol, kline } = klineData;
    const binanceSymbol = symbol.replace('/', '').toUpperCase();
-   if (binanceSymbol === 'XAU/USD') { /* handle mapping if needed */ }
    
-   const currentBinance = state.currentBinance || 'BTCUSDT';
-   
-   // Only update if this is the current symbol
-   // Check if the formatted symbol matches current symbol
-   if (symbol !== state.currentSymbol) return;
+   // Use the binance symbol for comparison to be safe
+   if (binanceSymbol !== state.currentBinance) return;
    
    // 1. Update chart visual
    if (state.charts.heroCandles && kline) {
@@ -994,15 +990,14 @@ function updateChartFromKline(klineData) {
       } catch (e) {}
    }
 
-   // 2. Update internal klineData state for SMC Analysis
-   const key = symbol + state.currentTimeframe;
+   // 2. Update internal klineData state using the Binance symbol as key
+   const key = binanceSymbol + state.currentTimeframe;
    if (!state.klineData[key]) state.klineData[key] = [];
    
    const data = state.klineData[key];
    const lastCandle = data[data.length - 1];
    
    if (lastCandle && lastCandle.time === Math.floor(kline.t / 1000)) {
-      // Update existing candle
       data[data.length - 1] = {
          time: Math.floor(kline.t / 1000),
          open: parseFloat(kline.o),
@@ -1012,7 +1007,6 @@ function updateChartFromKline(klineData) {
          volume: parseFloat(kline.v)
       };
    } else {
-      // Append new candle
       data.push({
          time: Math.floor(kline.t / 1000),
          open: parseFloat(kline.o),
@@ -1021,7 +1015,6 @@ function updateChartFromKline(klineData) {
          close: parseFloat(kline.c),
          volume: parseFloat(kline.v)
       });
-      // Keep only last 500 candles
       if (data.length > 500) data.shift();
    }
    

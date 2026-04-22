@@ -1,18 +1,37 @@
-# APEX SMC CAPITAL - Prop Firm Trading Platform
+# APEX SMC CAPITAL - Professional Prop Firm Platform
 
-A professional Smart Money Concepts (SMC) trading platform with MT5 integration, real-time signal mirroring, and prop firm compliance monitoring.
+A high-performance trading ecosystem integrating **Live Binance Market Data**, **Institutional Smart Money Concepts (SMC) Analysis**, and **Automated MT5 Signal Mirroring**.
+
+## 🌟 Key Features
+
+### 📊 Live Analytics & Charting
+- **Real-Time Data:** Powered by Binance WebSockets for crypto and Frankfurter API for forex.
+- **SMC Analysis Engine:** Automated detection of:
+  - **Order Blocks (OB):** Identification of institutional demand/supply zones.
+  - **Fair Value Gaps (FVG):** Detecting market imbalances and potential fill zones.
+  - **Break of Structure (BOS):** Real-time trend shift and structure break detection.
+  - **Liquidity Zones:** Identifying sweep targets and inducement levels.
+  - **CHoCH:** Detecting Change of Character for early trend reversals.
+- **Interactive Chart Overlays:** Live Entry, SL, and TP lines plotted directly on the chart.
+- **Market Context:** Real-time trend classification (Trending Up, Trending Down, Ranging).
+
+### 🤖 MT5 Integration
+- **Signal Mirroring:** Connect your MT5 EA $\rightarrow$ Web Dashboard $\rightarrow$ Subscriber EAs.
+- **Automated Execution:** Receiver EAs automatically execute mirrored trades.
+- **HTTP Client:** Custom MQL5 library with built-in retry logic and error handling.
+
+### 🛡️ Prop Firm Compliance
+- **Risk Monitoring:** Real-time tracking of Daily Loss and Max Drawdown.
+- **Compliance Panel:** Visual indicators for safe/danger zones based on prop firm rules.
+- **Automated Guardrails:** Block new signals when drawdown limits are reached.
+
+---
 
 ## 🚀 Quick Start
 
-### Prerequisites
-- Node.js v18+
-- npm or yarn
-- MetaTrader 5 Terminal (for EA integration)
-
 ### Installation
-
 ```bash
-# Clone / navigate to project
+# Clone and enter project
 cd /home/ubuntu/.openclaw/workspace/smc-finance
 
 # Install backend dependencies
@@ -21,18 +40,14 @@ cd server && npm install
 # Start backend server (port 3001)
 npm start
 
-# In another terminal, serve frontend
-# Using Python
-cd .. && python3 -m http.server 3000
-
-# Or using Node http-server
-npx http-server -p 3000
+# Serve frontend (Root directory)
+cd .. && npx http-server -p 3000
 ```
 
-### Access Points
-- **Frontend**: http://localhost:3000
-- **Backend API**: http://localhost:3001/api
-- **SSE Stream**: http://localhost:3001/api/signals/live
+### Access
+- **Landing Page:** http://localhost:3000
+- **Trading Dashboard:** http://localhost:3000/dashboard.html
+- **API Base:** http://localhost:3001/api
 
 ---
 

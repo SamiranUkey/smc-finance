@@ -1,6 +1,6 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
-const { queries } = require('../database');
+const db = require('../database');
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'smc-capital-secret-key-change-in-production';
@@ -24,7 +24,7 @@ const authenticateToken = (req, res, next) => {
 };
 
 // Subscribe to a signal provider
-router.post('/subscribe', authenticateToken, (req, res) => {
+router.post('/subscribe', authenticateToken, async (req, res) => {
    try {
       const { providerId, plan = 'monthly' } = req.body;
 
@@ -33,24 +33,29 @@ router.post('/subscribe', authenticateToken, (req, res) => {
       }
 
       // Check if provider exists
-      const provider = queries.getUserById(providerId);
+      const provider = await db.get('SELECT * FROM users WHERE id = $1', [providerId]);
       if (!provider) {
          return res.status(404).json({ error: 'Signal provider not found' });
       }
 
-      // Can't subscribe to yourself
       if (providerId === req.user.id) {
          return res.status(400).json({ error: 'Cannot subscribe to yourself' });
       }
 
       // Check if already subscribed
-      const existing = queries.getSubscriptionStatus(req.user.id);
-      if (existing && existing.provider_user_id === providerId && existing.status === 'active') {
+      const existing = await db.get(
+         'SELECT id FROM subscriptions WHERE subscriber_id = $1 AND provider_user_id = $2 AND status = \'active\'',
+         [req.user.id, providerId]
+      );
+      if (existing) {
          return res.status(409).json({ error: 'Already subscribed to this provider' });
       }
 
       // Create subscription
-      const subscription = queries.createSubscription(req.user.id, providerId, plan);
+      const subscription = await db.run(
+         'INSERT INTO subscriptions (subscriber_id, provider_user_id, plan) VALUES ($1, $2, $3) RETURNING id',
+         [req.user.id, providerId, plan]
+      );
 
       res.json({
          success: true,
@@ -70,9 +75,15 @@ router.post('/subscribe', authenticateToken, (req, res) => {
 });
 
 // Get subscription status
-router.get('/status', authenticateToken, (req, res) => {
+router.get('/status', authenticateToken, async (req, res) => {
    try {
-      const subscriptions = queries.getSubscriptionsBySubscriber(req.user.id);
+      const subscriptions = await db.all(
+         `SELECT s.*, u.name as provider_name 
+          FROM subscriptions s 
+          JOIN users u ON s.provider_user_id = u.id 
+          WHERE s.subscriber_id = $1`, 
+         [req.user.id]
+      );
 
       res.json({
          success: true,
@@ -92,7 +103,7 @@ router.get('/status', authenticateToken, (req, res) => {
 });
 
 // Cancel subscription
-router.post('/cancel', authenticateToken, (req, res) => {
+router.post('/cancel', authenticateToken, async (req, res) => {
    try {
       const { providerId } = req.body;
 
@@ -100,9 +111,12 @@ router.post('/cancel', authenticateToken, (req, res) => {
          return res.status(400).json({ error: 'Provider ID is required' });
       }
 
-      const result = queries.cancelSubscription(req.user.id, providerId);
+      const result = await db.query(
+         'UPDATE subscriptions SET status = \'cancelled\' WHERE subscriber_id = $1 AND provider_user_id = $2 AND status = \'active\'',
+         [req.user.id, providerId]
+      );
 
-      if (result.changes === 0) {
+      if (result.rowCount === 0) {
          return res.status(404).json({ error: 'Subscription not found' });
       }
 
@@ -117,10 +131,9 @@ router.post('/cancel', authenticateToken, (req, res) => {
 });
 
 // Get available providers
-router.get('/providers', authenticateToken, (req, res) => {
+router.get('/providers', authenticateToken, async (req, res) => {
    try {
-      // For now, just return the demo provider
-      // In production, this would query users who have opted-in to be signal providers
+      // Return demo provider for now
       const providers = [
          {
             id: 1,

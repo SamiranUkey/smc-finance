@@ -3,7 +3,7 @@ const cors = require('cors');
 const morgan = require('morgan');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
-const { initDatabase, queries } = require('./database');
+const db = require('./database');
 const authRoutes = require('./routes/auth');
 const signalsRoutes = require('./routes/signals');
 const dashboardRoutes = require('./routes/dashboard');
@@ -19,7 +19,7 @@ const sseClients = new Set();
 // Middleware
 app.use(cors({
    origin: process.env.NODE_ENV === 'production' 
-      ? 'https://your-domain.com' 
+      ? process.env.FRONTEND_URL || 'https://your-domain.netlify.app' 
       : ['http://localhost:3000', 'http://localhost:3001'],
    credentials: true
 }));
@@ -50,188 +50,147 @@ const authenticateToken = (req, res, next) => {
 };
 
 // API Key middleware for webhooks
-const authenticateApiKey = (req, res, next) => {
+const authenticateApiKey = async (req, res, next) => {
    const apiKey = req.headers['x-api-key'] || req.query.api_key;
 
    if (!apiKey) {
       return res.status(401).json({ error: 'API key required' });
    }
 
-   const user = queries.validateApiKey(apiKey);
-   if (!user) {
-      return res.status(403).json({ error: 'Invalid API key' });
-   }
-
-   req.user = { id: user.id, email: user.email, name: user.name };
-   next();
-};
-
-// Initialize database
-initDatabase();
-
-// Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/signals', signalsRoutes);
-app.use('/api/dashboard', dashboardRoutes);
-app.use('/api/subscription', subscriptionRoutes);
-
-// SSE endpoint for live signals
-app.get('/api/signals/live', (req, res) => {
-   res.setHeader('Content-Type', 'text/event-stream');
-   res.setHeader('Cache-Control', 'no-cache');
-   res.setHeader('Connection', 'keep-alive');
-   res.setHeader('Access-Control-Allow-Origin', '*');
-
-   // Send initial connection message
-   res.write('event: connected\ndata: {"status":"connected"}\n\n');
-
-   // Add client to SSE pool
-   sseClients.add(res);
-
-   // Heartbeat every 30 seconds
-   const heartbeat = setInterval(() => {
-      res.write('event: heartbeat\ndata: {"timestamp":"' + new Date().toISOString() + '"}\n\n');
-   }, 30000);
-
-   req.on('close', () => {
-      sseClients.delete(res);
-      clearInterval(heartbeat);
-   });
-});
-
-// Broadcast signal to all SSE clients
-const broadcastSignal = (signal) => {
-   const data = JSON.stringify(signal);
-   sseClients.forEach(client => {
-      client.write(`event: signal\ndata: ${data}\n\n`);
-   });
-};
-
-// Webhook endpoint for MT5 EA signals
-app.post('/api/signals/webhook', authenticateApiKey, (req, res) => {
    try {
-      const { symbol, direction, entry, sl, tp, lot_size, score, concepts } = req.body;
-
-      // Validate required fields
-      if (!symbol || !direction || !entry || !sl || !tp) {
-         return res.status(400).json({ 
-            error: 'Missing required fields: symbol, direction, entry, sl, tp' 
-         });
+      const user = await db.get('SELECT id, email, name FROM users WHERE api_key = $1', [apiKey]);
+      if (!user) {
+         return res.status(403).json({ error: 'Invalid API key' });
       }
-
-      // Validate direction
-      if (!['long', 'short'].includes(direction)) {
-         return res.status(400).json({ 
-            error: 'Invalid direction. Must be "long" or "short"' 
-         });
-      }
-
-      // Rate limiting check (30 seconds between signals)
-      if (!queries.checkRateLimit(req.user.id, 30)) {
-         return res.status(429).json({ 
-            error: 'Rate limit exceeded. Please wait 30 seconds between signals.' 
-         });
-      }
-
-      // Create signal in database
-      const conceptsJson = concepts ? JSON.stringify(concepts) : null;
-      const signal = queries.createSignal(
-         req.user.id,
-         symbol,
-         direction,
-         parseFloat(entry),
-         parseFloat(sl),
-         parseFloat(tp),
-         parseFloat(score) || 0.5,
-         conceptsJson
-      );
-
-      // Update rate limit
-      queries.updateRateLimit(req.user.id);
-
-      // Get full signal for broadcast
-      const fullSignal = queries.getSignalById(signal.id);
-      fullSignal.user_name = req.user.name;
-
-      // Broadcast to SSE clients
-      broadcastSignal(fullSignal);
-
-      // Notify subscribed MT5 connections
-      notifySubscribers(fullSignal);
-
-      res.status(201).json({ 
-         success: true, 
-         signal_id: signal.id,
-         message: 'Signal recorded successfully' 
-      });
+      req.user = user;
+      next();
    } catch (error) {
-      console.error('[Webhook] Error:', error);
+      console.error('[AuthApiKey]', error);
       res.status(500).json({ error: 'Internal server error' });
    }
-});
-
-// Notify subscribed MT5 connections (placeholder for future MT5 push)
-const notifySubscribers = (signal) => {
-   // This would notify connected MT5 EAs via their respective connections
-   // For now, just log it
-   console.log(`[Notify] Signal ${signal.id} ready for subscriber mirroring`);
 };
 
-// Prop firm compliance check
-const checkPropFirmLimits = (userId) => {
-   // Get today's stats
-   const todayStats = queries.getTodayStats(userId);
-   
-   // Default prop firm limits
-   const MAX_DAILY_LOSS = 5.0; // 5%
-   const MAX_DRAWDOWN = 10.0; // 10%
-   
-   if (todayStats) {
-      const dailyLossPercent = (todayStats.daily_pnl / todayStats.balance) * 100;
-      if (Math.abs(dailyLossPercent) >= MAX_DAILY_LOSS) {
-         return { 
-            allowed: false, 
-            reason: 'DAILY_LOSS_LIMIT', 
-            limit: MAX_DAILY_LOSS,
-            current: dailyLossPercent 
-         };
-      }
+// Initialize database and start server
+async function startServer() {
+   try {
+      await db.init();
       
-      if (todayStats.max_drawdown >= MAX_DRAWDOWN) {
-         return { 
-            allowed: false, 
-            reason: 'MAX_DRAWDOWN_LIMIT', 
-            limit: MAX_DRAWDOWN,
-            current: todayStats.max_drawdown 
-         };
-      }
+      // Routes
+      app.use('/api/auth', authRoutes);
+      app.use('/api/signals', signalsRoutes);
+      app.use('/api/dashboard', dashboardRoutes);
+      app.use('/api/subscription', subscriptionRoutes);
+
+      // SSE endpoint for live signals
+      app.get('/api/signals/live', (req, res) => {
+         res.setHeader('Content-Type', 'text/event-stream');
+         res.setHeader('Cache-Control', 'no-cache');
+         res.setHeader('Connection', 'keep-alive');
+         res.setHeader('Access-Control-Allow-Origin', '*');
+
+         res.write('event: connected\\ndata: {"status":"connected"}\\n\\n');
+         sseClients.add(res);
+
+         const heartbeat = setInterval(() => {
+            res.write('event: heartbeat\\ndata: {"timestamp":"' + new Date().toISOString() + '"}\\n\\n');
+         }, 30000);
+
+         req.on('close', () => {
+            sseClients.delete(res);
+            clearInterval(heartbeat);
+         });
+      });
+
+      // Broadcast signal to all SSE clients
+      const broadcastSignal = (signal) => {
+         const data = JSON.stringify(signal);
+         sseClients.forEach(client => {
+            client.write(`event: signal\\ndata: ${data}\\n\\n`);
+         });
+      };
+
+      // Webhook endpoint for MT5 EA signals
+      app.post('/api/signals/webhook', authenticateApiKey, async (req, res) => {
+         try {
+            const { symbol, direction, entry, sl, tp, lot_size, score, concepts } = req.body;
+
+            if (!symbol || !direction || !entry || !sl || !tp) {
+               return res.status(400).json({ 
+                  error: 'Missing required fields: symbol, direction, entry, sl, tp' 
+               });
+            }
+
+            if (!['long', 'short'].includes(direction)) {
+               return res.status(400).json({ 
+                  error: 'Invalid direction. Must be "long" or "short"' 
+               });
+            }
+
+            // Simple rate limiting: 30s between signals per user
+            const lastSignal = await db.get(
+               'SELECT created_at FROM signals WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1',
+               [req.user.id]
+            );
+            if (lastSignal) {
+               const diff = (new Date() - new Date(lastSignal.created_at)) / 1000;
+               if (diff < 30) {
+                  return res.status(429).json({ 
+                     error: 'Rate limit exceeded. Please wait 30 seconds between signals.' 
+                  });
+               }
+            }
+
+            const conceptsJson = concepts ? JSON.stringify(concepts) : null;
+            const signal = await db.run(
+               'INSERT INTO signals (user_id, symbol, type, entry_price, sl, tp, score, concepts_json) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id',
+               [req.user.id, symbol, direction, parseFloat(entry), parseFloat(sl), parseFloat(tp), parseFloat(score) || 0.5, conceptsJson]
+            );
+
+            const fullSignal = await db.get('SELECT * FROM signals WHERE id = $1', [signal.id]);
+            fullSignal.user_name = req.user.name;
+
+            broadcastSignal(fullSignal);
+
+            res.status(201).json({ 
+               success: true, 
+               signal_id: signal.id,
+               message: 'Signal recorded successfully' 
+            });
+         } catch (error) {
+            console.error('[Webhook] Error:', error);
+            res.status(500).json({ error: 'Internal server error' });
+         }
+      });
+
+      // Error handling middleware
+      app.use((err, req, res, next) => {
+         console.error('[Error]', err);
+         res.status(500).json({ error: 'Internal server error' });
+      });
+
+      // 404 handler
+      app.use((req, res) => {
+         res.status(404).json({ error: 'Endpoint not found' });
+      });
+
+      app.listen(PORT, '0.0.0.0', () => {
+         console.log(`
+      ╔═══════════════════════════════════════════════════════════╗
+      ║         APEX SMC CAPITAL - API SERVER STARTED             ║
+      ╠═══════════════════════════════════════════════════════════╣
+      ║  Port: ${PORT}                                              ║
+      ║  Mode: ${process.env.NODE_ENV || 'development'}                                  ║
+      ║  SSE Clients: 0                                           ║
+      ╚═══════════════════════════════════════════════════════════╝
+         `);
+      });
+
+   } catch (error) {
+      console.error('Server Startup Error:', error);
+      process.exit(1);
    }
-   
-   return { allowed: true };
-};
+}
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-   console.error('[Error]', err);
-   res.status(500).json({ error: 'Internal server error' });
-});
-
-// 404 handler
-app.use((req, res) => {
-   res.status(404).json({ error: 'Endpoint not found' });
-});
-
-// Start server
-app.listen(PORT, '0.0.0.0', () => {
-   console.log(`
-╔═══════════════════════════════════════════════════════════╗
-║         APEX SMC CAPITAL - API SERVER STARTED             ║
-╠═══════════════════════════════════════════════════════════╣
-║  Port: ${PORT}                                              ║
-║  Mode: ${process.env.NODE_ENV || 'development'}                                  ║
-║  SSE Clients: 0                                           ║
-╚═══════════════════════════════════════════════════════════╝
-   `);
-});
+startServer();
 
 module.exports = app;

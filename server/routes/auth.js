@@ -1,7 +1,7 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { queries } = require('../database');
+const db = require('../database');
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'smc-capital-secret-key-change-in-production';
@@ -11,7 +11,6 @@ router.post('/register', async (req, res) => {
    try {
       const { email, password, name } = req.body;
 
-      // Validation
       if (!email || !password || !name) {
          return res.status(400).json({ error: 'Email, password, and name are required' });
       }
@@ -20,14 +19,13 @@ router.post('/register', async (req, res) => {
          return res.status(400).json({ error: 'Password must be at least 8 characters' });
       }
 
-      // Email format validation
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(email)) {
          return res.status(400).json({ error: 'Invalid email format' });
       }
 
       // Check if user exists
-      const existingUser = queries.getUserByEmail(email);
+      const existingUser = await db.get('SELECT id FROM users WHERE email = $1', [email]);
       if (existingUser) {
          return res.status(409).json({ error: 'Email already registered' });
       }
@@ -35,21 +33,25 @@ router.post('/register', async (req, res) => {
       // Hash password
       const passwordHash = await bcrypt.hash(password, 12);
 
-      // Create user
-      const { id, apiKey } = queries.createUser(email, passwordHash, name);
+      // Create user and return the new user data
+      // Note: PostgreSQL uses RETURNING to get IDs back
+      const user = await db.run(
+         'INSERT INTO users (email, password_hash, name, api_key) VALUES ($1, $2, $3, $4) RETURNING id, api_key',
+         [email, passwordHash, name, `smc_live_${Math.random().toString(36).substr(2, 15)}`]
+      );
 
       // Generate JWT
       const token = jwt.sign(
-         { id, email, name },
+         { id: user.id, email, name },
          JWT_SECRET,
          { expiresIn: '7d' }
       );
 
       res.status(201).json({
          success: true,
-         user: { id, email, name, plan: 'free' },
+         user: { id: user.id, email, name, plan: 'free' },
          token,
-         apiKey,
+         apiKey: user.api_key,
          message: 'Account created successfully'
       });
    } catch (error) {
@@ -67,19 +69,16 @@ router.post('/login', async (req, res) => {
          return res.status(400).json({ error: 'Email and password are required' });
       }
 
-      // Find user
-      const user = queries.getUserByEmail(email);
+      const user = await db.get('SELECT * FROM users WHERE email = $1', [email]);
       if (!user) {
          return res.status(401).json({ error: 'Invalid email or password' });
       }
 
-      // Verify password
       const validPassword = await bcrypt.compare(password, user.password_hash);
       if (!validPassword) {
          return res.status(401).json({ error: 'Invalid email or password' });
       }
 
-      // Generate JWT
       const token = jwt.sign(
          { id: user.id, email: user.email, name: user.name },
          JWT_SECRET,
@@ -104,9 +103,9 @@ router.post('/login', async (req, res) => {
 });
 
 // Get current user profile
-router.get('/me', requireAuth, (req, res) => {
+router.get('/me', requireAuth, async (req, res) => {
    try {
-      const user = queries.getUserById(req.user.id);
+      const user = await db.get('SELECT * FROM users WHERE id = $1', [req.user.id]);
       if (!user) {
          return res.status(404).json({ error: 'User not found' });
       }
@@ -129,7 +128,7 @@ router.get('/me', requireAuth, (req, res) => {
 });
 
 // Connect MT5 account
-router.post('/connect-mt5', requireAuth, (req, res) => {
+router.post('/connect-mt5', requireAuth, async (req, res) => {
    try {
       const { broker, login, password, server } = req.body;
 
@@ -139,16 +138,11 @@ router.post('/connect-mt5', requireAuth, (req, res) => {
          });
       }
 
-      // Encrypt password (simple base64 for demo - use proper encryption in production)
       const encryptedPassword = Buffer.from(password).toString('base64');
 
-      // Create MT5 connection
-      const connection = queries.createMT5Connection(
-         req.user.id,
-         broker,
-         login,
-         encryptedPassword,
-         server
+      const connection = await db.run(
+         'INSERT INTO mt5_connections (user_id, broker, login, password_encrypted, server) VALUES ($1, $2, $3, $4, $5) RETURNING id',
+         [req.user.id, broker, login, encryptedPassword, server]
       );
 
       res.json({
@@ -168,7 +162,7 @@ router.post('/connect-mt5', requireAuth, (req, res) => {
 });
 
 // Disconnect MT5 account
-router.delete('/disconnect-mt5', requireAuth, (req, res) => {
+router.delete('/disconnect-mt5', requireAuth, async (req, res) => {
    try {
       const { connectionId } = req.body;
 
@@ -176,9 +170,9 @@ router.delete('/disconnect-mt5', requireAuth, (req, res) => {
          return res.status(400).json({ error: 'Connection ID is required' });
       }
 
-      const result = queries.deleteMT5Connection(connectionId, req.user.id);
+      const result = await db.query('DELETE FROM mt5_connections WHERE id = $1 AND user_id = $2', [connectionId, req.user.id]);
 
-      if (result.changes === 0) {
+      if (result.rowCount === 0) {
          return res.status(404).json({ error: 'Connection not found' });
       }
 
@@ -193,11 +187,10 @@ router.delete('/disconnect-mt5', requireAuth, (req, res) => {
 });
 
 // Get user's MT5 connections
-router.get('/mt5-connections', requireAuth, (req, res) => {
+router.get('/mt5-connections', requireAuth, async (req, res) => {
    try {
-      const connections = queries.getMT5ConnectionsByUser(req.user.id);
+      const connections = await db.all('SELECT * FROM mt5_connections WHERE user_id = $1', [req.user.id]);
       
-      // Mask passwords
       const maskedConnections = connections.map(conn => ({
          id: conn.id,
          broker: conn.broker,
@@ -217,7 +210,6 @@ router.get('/mt5-connections', requireAuth, (req, res) => {
    }
 });
 
-// Auth middleware helper
 function requireAuth(req, res, next) {
    const authHeader = req.headers['authorization'];
    const token = authHeader && authHeader.split(' ')[1];

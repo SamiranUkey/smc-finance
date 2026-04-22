@@ -1,5 +1,5 @@
 /* ================================================
-   MARKET DATA - Real-Time from Binance WebSocket
+   MARKET DATA - Real-Time from Binance WebSocket + REST
    ================================================ */
 
 class MarketData {
@@ -12,13 +12,13 @@ class MarketData {
       this.maxReconnectAttempts = 10;
       this.reconnectDelay = 5000;
       this.forexInterval = null;
+      this.forcePollInterval = null;
       this.forexCache = {};
    }
    
    connect() {
       if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) return;
       
-      // Use lowercase for Binance combined streams
       const symbols = ['btcusdt', 'ethusdt', 'solusdt', 'bnbusdt', 'eurusdt', 'gbpusdt', 'usdjpy', 'paxgusdt'];
       const streams = [];
       
@@ -37,6 +37,7 @@ class MarketData {
          this.reconnectAttempts = 0;
          this.notify({ type: 'connected' });
          this.startForexPolling();
+         this.startForcePolling();
       };
       
       this.ws.onmessage = (event) => {
@@ -73,7 +74,7 @@ class MarketData {
                      l: data.l,
                      c: data.c,
                      v: data.v,
-                     x: data.x // is candle closed?
+                     x: data.x
                   }
                };
                this.notify({ type: 'kline', data: kline });
@@ -99,7 +100,6 @@ class MarketData {
          console.error('[MarketData] Max reconnect attempts reached. Please refresh page.');
          return;
       }
-      
       this.reconnectAttempts++;
       setTimeout(() => this.connect(), this.reconnectDelay);
    }
@@ -107,6 +107,7 @@ class MarketData {
    disconnect() {
       if (this.ws) this.ws.close();
       if (this.forexInterval) clearInterval(this.forexInterval);
+      if (this.forcePollInterval) clearInterval(this.forcePollInterval);
    }
    
    formatSymbol(symbol) {
@@ -126,9 +127,37 @@ class MarketData {
       return s;
    }
    
+   // Force-poll all prices every 5 seconds as a fallback for the WebSocket
+   startForcePolling() {
+      this.forcePollInterval = setInterval(async () => {
+         console.log('[MarketData] Force-polling latest prices...');
+         const symbols = ['btcusdt', 'ethusdt', 'solusdt', 'bnbusdt', 'eurusdt', 'gbpusdt', 'usdjpy', 'paxgusdt'];
+         
+         try {
+            const res = await fetch(`https://api.binance.com/api/v3/ticker/price`);
+            const data = await res.json();
+            
+            data.forEach(item => {
+               const symbol = item.symbol.toLowerCase();
+               if (symbols.includes(symbol)) {
+                  const ticker = {
+                     symbol: this.formatSymbol(item.symbol),
+                     price: parseFloat(item.price),
+                     timestamp: Date.now()
+                  };
+                  this.priceCache[item.symbol] = ticker;
+                  this.notify({ type: 'ticker', data: ticker });
+               }
+            });
+         } catch (e) {
+            console.error('[MarketData] Force-poll error:', e);
+         }
+      }, 5000);
+   }
+   
    startForexPolling() {
       this.fetchForexRates();
-      this.forexInterval = setInterval(() => this.fetchForexRates(), 10000);
+      this.forexInterval = setInterval(() => this.fetchForexRates(), 5000); // 5s as requested
    }
    
    async fetchForexRates() {

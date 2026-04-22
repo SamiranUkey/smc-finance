@@ -19,7 +19,7 @@ const sseClients = new Set();
 // Middleware
 app.use(cors({
    origin: process.env.NODE_ENV === 'production' 
-      ? 'https://peppy-moxie-bc39a3.netlify.app' 
+      ? 'https://apex-smc-capital.samirannarendra-ukey.workers.dev' 
       : ['http://localhost:3000', 'http://localhost:3001'],
    credentials: true
 }));
